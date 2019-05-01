@@ -9,15 +9,16 @@ comparisons per element](https://arxiv.org/pdf/cs/0610046.pdf).
 
 Currently the project consist of the following sources:
 
-### Streaming min/max algorithm interface
+### Streaming min-max algorithm interface
 
 `streaming_min_max_algorithm_interface.h` defines the abstract class
 `streaming_min_max_algorithm_interface` which defines the interface
-which needs to be implemented to have a concrete implementation of the
-*streaming min/max algorithm* properly integrate with the
-[benchmarking framework](#Streaming min/max benchmark framework)
+which needs to be implemented to have a [concrete
+implementation](#Concrete-streaming-min-max-algorithms) of the
+*streaming min-max algorithm* properly integrate with the
+[benchmarking framework](#Streaming-min-max-benchmark-framework)
 (`streaming_min_max_comparison`) and the [collection of
-algorithms](#Streaming min/max algorithm collection)
+algorithms](#Streaming-min-max-algorithm-collection)
 (`streaming_min_max_algorithms`). The interface hereby consists of the
 following (pure virtual) member functions:
 
@@ -54,7 +55,7 @@ the streaming min/max algorithm using the `calc()` function.
 
     std::vector<float> const & get_min_values() const
 	
-### Streaming min/max algorithm collection
+### Streaming min-max algorithm collection
 
 `streaming_min_max_algorithms.h` and
 `streaming_min_max_algorithms.cpp` contain the and array of all
@@ -68,7 +69,7 @@ the number of supported algorithms `algorithms_array_size`.
 This array is used by the benchmarking framework to iterate over all
 supported algorithms durign one benchmark run.
 
-### Streaming min/max benchmark framework
+### Streaming min-max benchmark framework
 	
 `streaming_min_max_comparison.cpp` contains a simple benchmarking
 framework which does the following things:
@@ -81,7 +82,7 @@ framework which does the following things:
 * invocation of each algorithm's `calc()` function
 * measurement of the run-time of each algorithm's `calc()` function
 
-### Concrete streaming min/max algorithms
+### Concrete streaming min-max algorithms
 
 #### Lemire's implementation
 
@@ -107,17 +108,17 @@ allocation, memory transfer, kernel launch) whereas
 `streaming_min_max_cuda_plain.cpp` and
 `streaming_min_max_cuda_plain.h` contain the implementation of the
 `streaming_min_max_algorithm_interface` interface for integrate with
-the [benchmarking framework](Streaming min/max benchmark framework).
+the [benchmarking framework](Streaming-min-max-benchmark-framework).
 
 #### CUDA streams implementation
 
 The files `streaming_min_max_cuda_streams.cpp` and
 `streaming_min_max_cuda_streams.h` currently only provide provide the
 implementation of the `streaming_min_max_algorithm_interface`
-interface for integrate with the [benchmarking framework](#Streaming
-min/max benchmark framework). - The `calc()` function is currently
-(almost) empty. At a later stage of the project the files are intended
-to host a [CUDA
+interface for integrate with the [benchmarking
+framework](#Streaming-min-max-benchmark-framework). - The `calc()`
+function is currently (almost) empty. At a later stage of the project
+the files are intended to host a [CUDA
 streams](https://devblogs.nvidia.com/gpu-pro-tip-cuda-7-streams-simplify-concurrency/)
 based implementation of the streaming min/max algorithm.
 
@@ -126,11 +127,12 @@ based implementation of the streaming min/max algorithm.
 The files `streaming_min_max_thrust.cpp` and
 `streaming_min_max_thrust.h` currently only provide provide the
 implementation of the `streaming_min_max_algorithm_interface`
-interface for integrate with the [benchmarking framework](#Streaming
-min/max benchmark framework). - The `calc()` function is currently
-(almost) empty. At a later stage of the project the files are intended
-to host a [Thrust](https://developer.nvidia.com/thrust) based
-implementation of the streaming min/max algorithm.
+interface for integrate with the [benchmarking
+framework](#Streaming-min-max-benchmark-framework). - The `calc()`
+function is currently (almost) empty. At a later stage of the project
+the files are intended to host a
+[Thrust](https://developer.nvidia.com/thrust) based implementation of
+the streaming min/max algorithm.
 
 #### Utilities and helpers
 
