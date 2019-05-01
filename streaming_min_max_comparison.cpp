@@ -36,14 +36,13 @@ static std::vector<float> create_white_noise_vector(
 }
 
 static void compare_all_algos(
-    std::unique_ptr<streaming_min_max_algorithm_interface> algorithms[],
-    size_t algorithms_array_size,
+    std::vector<std::unique_ptr<streaming_min_max_algorithm_interface>> & algorithms,
     std::vector<float> const & data,
     std::vector<std::chrono::duration<double>> & timings,
     unsigned int window_size
     )
 {
-    for (unsigned int i = 0; i < algorithms_array_size; ++i)
+    for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
 	auto start = std::chrono::high_resolution_clock::now();
 	algorithms[i]->calc(data, window_size);
@@ -54,14 +53,13 @@ static void compare_all_algos(
 }
 
 static void timings(
-    std::unique_ptr<streaming_min_max_algorithm_interface> algorithms[],
-    size_t algorithms_array_size,
+    std::vector<std::unique_ptr<streaming_min_max_algorithm_interface>> & algorithms,
     unsigned int window_size,
     unsigned int sample_size,
     unsigned int number_of_iterations
     )
 {
-    std::vector<std::chrono::duration<double>> timings(algorithms_array_size);
+    std::vector<std::chrono::duration<double>> timings(algorithms.size());
 
     std::cout << "\nPerforming a comparison using the following parameters:"
 	      << "\n  window_size = " << window_size
@@ -72,12 +70,12 @@ static void timings(
     for (unsigned int i = 0; i < number_of_iterations; ++i)
     {
         auto data = create_white_noise_vector(sample_size);
-        compare_all_algos(algorithms_array, algorithms_array_size, data, timings, window_size);
+        compare_all_algos(algorithms, data, timings, window_size);
     }
 
-    for (unsigned int i = 0; i < algorithms_array_size; ++i)
+    for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
-	std::cout << algorithms_array[i]->get_name() << " = " << timings[i].count() << " seconds\n";
+	std::cout << algorithms[i]->get_name() << " = " << timings[i].count() << " seconds\n";
     }
 }
 
@@ -209,7 +207,7 @@ int main(
         usage(std::cerr, EXIT_FAILURE);
     }*/
     
-    timings(algorithms_array, algorithms_array_size, window_size, sample_size, number_of_iterations);
+    timings(algorithms, window_size, sample_size, number_of_iterations);
 	    
     return EXIT_SUCCESS;
 }

@@ -5,7 +5,6 @@
 
 #include <memory>
 
-extern std::unique_ptr<streaming_min_max_algorithm_interface> algorithms_array[];
-extern const size_t algorithms_array_size;
+extern std::vector<std::unique_ptr<streaming_min_max_algorithm_interface> > algorithms;
 
 #endif

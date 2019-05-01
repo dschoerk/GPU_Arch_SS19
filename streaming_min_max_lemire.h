@@ -8,7 +8,7 @@ class streaming_min_max_lemire:
 {
 public:
     
-    char const * get_name(
+    std::string_view get_name(
 	) const;
     
     void calc(

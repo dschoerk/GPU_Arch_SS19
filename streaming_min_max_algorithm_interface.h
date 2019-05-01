@@ -2,12 +2,13 @@
 #define STREAMING_MIN_MAX_ALGORIHTM_INTERFACE_H
 
 #include <vector>
+#include <string_view>
 
 class streaming_min_max_algorithm_interface
 {
 public:
 
-    virtual char const * get_name(
+    virtual std::string_view get_name(
 	) const = 0;
     
     virtual void calc(

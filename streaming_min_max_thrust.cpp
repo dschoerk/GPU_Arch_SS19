@@ -1,6 +1,6 @@
 #include "streaming_min_max_thrust.h"
 
-char const * streaming_min_max_thrust::get_name(
+std::string_view streaming_min_max_thrust::get_name(
     ) const
 {
     return "thrust";

@@ -2,7 +2,7 @@
 
 #include <deque>
 
-char const * streaming_min_max_lemire::get_name(
+std::string_view streaming_min_max_lemire::get_name(
     ) const
 {
     return "lemire";
