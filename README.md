@@ -28,7 +28,7 @@ This function is intended to return the name of the streaming min/max
 algorithm implementation. This name is used in the output of the
 benchmarking framework.
 
-    char const * get_name() const
+    std::string_view get_name() const
 
 #### `calc()`
 
@@ -58,15 +58,12 @@ the streaming min/max algorithm using the `calc()` function.
 ### Streaming min-max algorithm collection
 
 `streaming_min_max_algorithms.h` and
-`streaming_min_max_algorithms.cpp` contain the and array of all
-supported streaming min/max algorithms (`algorithms_array`) as well as
-the number of supported algorithms `algorithms_array_size`.
+`streaming_min_max_algorithms.cpp` contain a vector of all supported
+streaming min/max algorithms (`algorithms`).
 
-    std::unique_ptr<streaming_min_max_algorithm_interface> algorithms_array[]
-	
-    const size_t algorithms_array_size
+    std::vector<std::unique_ptr<streaming_min_max_algorithm_interface> > algorithms
 
-This array is used by the benchmarking framework to iterate over all
+This vector is used by the benchmarking framework to iterate over all
 supported algorithms durign one benchmark run.
 
 ### Streaming min-max benchmark framework
