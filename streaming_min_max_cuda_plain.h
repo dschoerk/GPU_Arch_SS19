@@ -8,7 +8,7 @@ class streaming_min_max_cuda_plain:
 {
 public:
 
-    char const * get_name(
+    std::string_view get_name(
 	) const;
 
     void calc(

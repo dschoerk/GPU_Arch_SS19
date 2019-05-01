@@ -147,12 +147,13 @@ else ifneq ($(TARGET_ARCH),$(HOST_ARCH))
         HOST_COMPILER ?= powerpc64le-linux-gnu-g++
     endif
 endif
-HOST_COMPILER ?= g++
+#HOST_COMPILER ?= g++
+HOST_COMPILER ?= /opt/rh/devtoolset-7/root/usr/bin/g++
 NVCC          := $(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
 
 # internal flags
 NVCCFLAGS   := -m${TARGET_SIZE}
-CCFLAGS     :=
+CCFLAGS     := 
 LDFLAGS     :=
 
 # build flags
@@ -292,19 +293,19 @@ OBJECTS := \
 
 %.o: %.cpp
 #
-# ### TOM: Caveat: -std=c++0x does not work for real CUDA sources (i.e., *.cu files)
-#          Seems to be some weird incompatibility with execption pointers => use it
+# ### TOM: Caveat: -std=c++17 does not work for real CUDA sources (i.e., *.cu files)
+#          Seems to be some weird incompatibility with the standard library => use it
 #          only for non-CUDA sources (i.e., *.cpp files) 
 #
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) -Xcompiler -std=c++0x $(GENCODE_FLAGS) -o $@ -c $<
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) -Xcompiler -std=c++17 $(GENCODE_FLAGS) -o $@ -c $<
 
 %.o: %.cu
 #
-# ### TOM: Caveat: -std=c++0x does not work for real CUDA sources (i.e., *.cu files)
-#          Seems to be some weird incompatibility with execption pointers => use it
+# ### TOM: Caveat: -std=c++17 does not work for real CUDA sources (i.e., *.cu files)
+#          Seems to be some weird incompatibility with the standard library => use it
 #          only for non-CUDA sources (i.e., *.cpp files) 
 #
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) -Xcompiler -std=c++11 $(GENCODE_FLAGS) -o $@ -c $<
 
 ################################################################################
 

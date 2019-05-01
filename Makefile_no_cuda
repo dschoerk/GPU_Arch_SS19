@@ -291,10 +291,10 @@ OBJECTS := \
 	streaming_min_max_cuda_plain_cuda.o
 
 %.o: %.cpp
-	$(HOST_COMPILER) $(INCLUDES) $(ALL_CCFLAGS) -std=c++0x -o $@ -c $<
+	$(HOST_COMPILER) $(INCLUDES) $(ALL_CCFLAGS) -std=c++17 -o $@ -c $<
 
 %.o: %.cu
-	$(HOST_COMPILER) $(INCLUDES) $(ALL_CCFLAGS) -std=c++98 -o $@ -c $<
+	$(HOST_COMPILER) $(INCLUDES) $(ALL_CCFLAGS) -std=c++17 -o $@ -c $<
 
 ################################################################################
 
@@ -320,7 +320,7 @@ $(PROJECT): $(OBJECTS)
 	$(HOST_COMPILER) $(ALL_LDFLAGS) -o $@ $+ $(LIBRARIES)
 
 clean:
-	rm -f $(OBJECTS) *.ii *.s *.compute_* *~
+	rm -f $(OBJECTS) $(PROJECT)_dlink.* *.ii *.s *.fatbin* *.compute_* *~ *.module_id 
 
 clobber: clean
 	rm -f $(PROJECT) $(PROJECT).zip
