@@ -44,11 +44,42 @@ static void compare_all_algos(
 {
     for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
-	auto start = std::chrono::high_resolution_clock::now();
-	algorithms[i]->calc(data, window_size);
-	auto finish = std::chrono::high_resolution_clock::now();
-	
-	timings[i] += (finish - start);
+        auto start = std::chrono::high_resolution_clock::now();
+        algorithms[i]->calc(data, window_size);
+        auto finish = std::chrono::high_resolution_clock::now();
+
+        auto& compare_max_it = algorithms[0]->get_max_values();
+        auto& compare_min_it = algorithms[0]->get_min_values();
+
+        if( i > 0 )
+        {
+            bool eq_min = std::equal(compare_max_it.begin(), compare_max_it.end(), algorithms[i]->get_max_values().begin());
+            bool eq_max = std::equal(compare_min_it.begin(), compare_min_it.end(), algorithms[i]->get_min_values().begin());
+
+            if(!eq_max || !eq_min)
+            {
+                for(int j=0; j < algorithms[0]->get_max_values().size(); ++j)
+                {
+                    std::cout << j << ": " << algorithms[0]->get_max_values()[j] << " == " << algorithms[i]->get_max_values()[j] << "\t" << algorithms[0]->get_min_values()[j] << " == " << algorithms[i]->get_min_values()[j] << std::endl;
+
+                    if(algorithms[0]->get_max_values()[j] != algorithms[i]->get_max_values()[j] || algorithms[0]->get_min_values()[j] != algorithms[i]->get_min_values()[j])
+                        break;
+                }
+            }
+
+            std::cout << std::endl;
+
+            if(!eq_min)
+                std::cout << "ERROR: Min values for algorithms " << algorithms[0]->get_name() << " and " << algorithms[i]->get_name() << " aren't equal!" << std::endl;
+
+            if(!eq_max)
+                std::cout << "ERROR: Max values for algorithms " << algorithms[0]->get_name() << " and " << algorithms[i]->get_name() << " aren't equal!" << std::endl;
+
+            if(!eq_max || !eq_min)
+                exit(1);
+        }
+        
+        timings[i] += (finish - start);
     }
 }
 
@@ -62,10 +93,10 @@ static void timings(
     std::vector<std::chrono::duration<double>> timings(algorithms.size());
 
     std::cout << "\nPerforming a comparison using the following parameters:"
-	      << "\n  window_size = " << window_size
-	      << "\n  sample_size = " << sample_size
-	      << "\n  number_of_iterations = " << number_of_iterations
-	      << "\n\n";
+        << "\n  window_size = " << window_size
+        << "\n  sample_size = " << sample_size
+        << "\n  number_of_iterations = " << number_of_iterations
+        << "\n\n";
 
     for (unsigned int i = 0; i < number_of_iterations; ++i)
     {
@@ -75,7 +106,7 @@ static void timings(
 
     for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
-	std::cout << algorithms[i]->get_name() << " = " << timings[i].count() << " seconds\n";
+	    std::cout << algorithms[i]->get_name() << " = " << timings[i].count() << " seconds\n";
     }
 }
 
