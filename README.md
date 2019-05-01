@@ -15,9 +15,9 @@ Currently the project consist of the following sources:
 `streaming_min_max_algorithm_interface` which defines the interface
 which needs to be implemented to have a concrete implementation of the
 *streaming min/max algorithm* properly integrate with the
-[benchmarking framework](Streaming min/max benchmark framework)
+[benchmarking framework](#Streaming min/max benchmark framework)
 (`streaming_min_max_comparison`) and the [collection of
-algorithms](Streaming min/max algorithm collection)
+algorithms](#Streaming min/max algorithm collection)
 (`streaming_min_max_algorithms`). The interface hereby consists of the
 following (pure virtual) member functions:
 
@@ -114,7 +114,7 @@ the [benchmarking framework](Streaming min/max benchmark framework).
 The files `streaming_min_max_cuda_streams.cpp` and
 `streaming_min_max_cuda_streams.h` currently only provide provide the
 implementation of the `streaming_min_max_algorithm_interface`
-interface for integrate with the [benchmarking framework](Streaming
+interface for integrate with the [benchmarking framework](#Streaming
 min/max benchmark framework). - The `calc()` function is currently
 (almost) empty. At a later stage of the project the files are intended
 to host a [CUDA
@@ -126,7 +126,7 @@ based implementation of the streaming min/max algorithm.
 The files `streaming_min_max_thrust.cpp` and
 `streaming_min_max_thrust.h` currently only provide provide the
 implementation of the `streaming_min_max_algorithm_interface`
-interface for integrate with the [benchmarking framework](Streaming
+interface for integrate with the [benchmarking framework](#Streaming
 min/max benchmark framework). - The `calc()` function is currently
 (almost) empty. At a later stage of the project the files are intended
 to host a [Thrust](https://developer.nvidia.com/thrust) based
@@ -183,3 +183,17 @@ where `OPTIONS` may be one or multiple of the following:
 If the executable was created via a debug build, the following additional option is supported:
 
 * `-v`, `--verbose` - produce verbose tracing output on `stdout`
+
+In the following a sample run of the benchmarking framework is shown:
+
+    [tom@herz GPU_Arch_SS19]$ ./streaming_min_max_comparison -s 10000000 -w 5 -i 10
+	
+    Performing a comparison using the following parameters:
+      window_size = 5
+      sample_size = 10000000
+      number_of_iterations = 10
+    
+    lemire = 18.159 seconds
+    cuda plain = 7.2461 seconds
+    thrust = 0.528345 seconds
+    cuda streams = 0.527815 seconds
