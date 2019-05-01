@@ -6,11 +6,16 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
-#include <getopt.h>
+
+#ifdef __linux__ 
+    #include <getopt.h>
+    #include <error.h>
+#endif
+
 #include <cerrno>
-#include <error.h>
 #include <climits>
 #include <limits>
+
 
 #ifdef DEBUG
 bool verbose(false);
@@ -91,7 +96,7 @@ static void usage(
 {
     size_t i;
 
-    ostr << "Usage: " << program_invocation_name << " [OPTIONS]\n\n"
+    ostr << "Usage: " << /*program_invocation_name*/"Not available on Windows" << " [OPTIONS]\n\n"
 	 << "where OPTIONS may be one or multiple of the following:\n"
 	 << "-h, --help\n"
 #ifdef DEBUG
@@ -147,7 +152,7 @@ int main(
     unsigned int sample_size = 10000;
     unsigned int number_of_iterations = 500;
 
-    char c;
+    /*char c;
     struct option long_options[] =
     {
         {"help", no_argument, NULL, 'h'},
@@ -202,7 +207,7 @@ int main(
     if ((optind < argc))
     {
         usage(std::cerr, EXIT_FAILURE);
-    }
+    }*/
     
     timings(algorithms_array, algorithms_array_size, window_size, sample_size, number_of_iterations);
 	    

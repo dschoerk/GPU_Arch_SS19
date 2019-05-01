@@ -1,0 +1,1 @@
+nvcc -o minmax.exe -I. -I"C:\ProgramData\NVIDIA Corporation\CUDA Samples\v8.0\common\inc" streaming_min_max_algorithms.cpp XGetopt.cpp streaming_min_max_comparison.cpp streaming_min_max_cuda_plain.cpp streaming_min_max_cuda_streams.cpp streaming_min_max_lemire.cpp utils.cpp streaming_min_max_cuda_plain_cuda.cu streaming_min_max_thrust.cpp
