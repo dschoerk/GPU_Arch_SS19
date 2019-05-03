@@ -16,6 +16,9 @@
 #include <climits>
 #include <limits>
 
+#ifndef __linux__ 
+char *program_invocation_name("<not yet set>");
+#endif
 
 #ifdef DEBUG
 bool verbose(false);
@@ -125,19 +128,20 @@ static void usage(
 {
     size_t i;
 
-    ostr << "Usage: " << /*program_invocation_name*/"Not available on Windows" << " [OPTIONS]\n\n"
+    ostr << "Usage: " << program_invocation_name << " [OPTIONS]\n\n"
 	 << "where OPTIONS may be one or multiple of the following:\n"
 	 << "-h, --help\n"
 #ifdef DEBUG
 	 << "-v, --verbose\n"
 #endif // DEBUG      
-	 << "-w, --window_size= WINDOW_SIZE[1, " << std::numeric_limits<int>::max() << "]\n"
+	 << "-w, --window_size=WINDOW_SIZE[1, " << std::numeric_limits<int>::max() << "]\n"
 	 << "-s, --sample_size=SAMPLE_SIZE[1, " << std::numeric_limits<int>::max() << "]\n"
 	 << "-i, --iterations=ITERATIONS[1, " << std::numeric_limits<int>::max() << "]\n";
 
     exit(exit_code);
 }
 
+#ifdef __linux__
 /**
  * \brief Converts a string into a unsigned int
  *
@@ -171,6 +175,7 @@ static unsigned int checked_to_uint(
 
     return static_cast<unsigned int>(result);
 }
+#endif
 
 int main(
     int argc,
@@ -178,10 +183,15 @@ int main(
     )
 {
     unsigned int window_size = 50;
-    unsigned int sample_size = 10000;
-    unsigned int number_of_iterations = 500;
+    unsigned int sample_size = 100000;
+    unsigned int number_of_iterations = 1;
 
-    /*char c;
+#ifndef __linux__ 
+    program_invocation_name = argv[0];
+#endif
+
+#ifdef __linux__
+    char c;
     struct option long_options[] =
     {
         {"help", no_argument, NULL, 'h'},
@@ -236,7 +246,8 @@ int main(
     if ((optind < argc))
     {
         usage(std::cerr, EXIT_FAILURE);
-    }*/
+    }
+#endif // __ linux __
     
     timings(algorithms, window_size, sample_size, number_of_iterations);
 	    
