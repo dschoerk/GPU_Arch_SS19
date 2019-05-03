@@ -5,8 +5,8 @@ extern void streaming_min_max_cuda_plain_calc(
     float const * h_array,
     float * h_min,
     float * h_max,
-    unsigned int array_size,
-    unsigned int min_max_size,
+    unsigned int array_elements,
+    unsigned int min_max_elements,
     unsigned int width
     );
 

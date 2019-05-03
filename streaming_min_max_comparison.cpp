@@ -38,6 +38,66 @@ static std::vector<float> create_white_noise_vector(
     return data;
 }
 
+static bool check_for_difference(
+    std::string_view minmax,
+    std::string_view reference_name,
+    std::vector<float> const & reference_values,
+    std::string_view compare_name,
+    std::vector<float> const & compare_values
+    )
+{
+    if (reference_values.size() != compare_values.size())
+    {
+	ERROR(
+	    "Number of %s values differ between %s and %s "
+	    "(%lu vs. %lu)",
+	    minmax.data(),
+	    reference_name.data(),
+	    compare_name.data(),
+	    reference_values.size(),
+	    compare_values.size()
+	    );
+
+	return true;
+    }
+
+    auto mismatch =
+	std::mismatch(
+	    reference_values.begin(),
+	    reference_values.end(),
+	    compare_values.begin()
+	    );
+    bool retval = false;
+
+    if (mismatch.first != reference_values.end())
+    {
+	ERROR(
+	    "Some %s values differ between %s and %s",
+	    minmax.data(),
+	    reference_name.data(),
+	    compare_name.data()
+	    );
+    }
+		
+    while (mismatch.first != reference_values.end())
+    {
+	auto position = mismatch.first - reference_values.begin();
+	retval = true;
+	
+	std::cerr << "\t" << position << ": " << *(mismatch.first)
+		  << " != " << *(mismatch.second) << '\n';
+
+	mismatch =
+	    std::mismatch(
+		mismatch.first + 1,
+		reference_values.end(),
+		mismatch.second + 1
+		);
+    }
+
+    return retval;
+}
+
 static void compare_all_algos(
     std::vector<std::unique_ptr<streaming_min_max_algorithm_interface>> & algorithms,
     std::vector<float> const & data,
@@ -51,35 +111,31 @@ static void compare_all_algos(
         algorithms[i]->calc(data, window_size);
         auto finish = std::chrono::high_resolution_clock::now();
 
-        auto& compare_max_it = algorithms[0]->get_max_values();
-        auto& compare_min_it = algorithms[0]->get_min_values();
+        auto& reference_max_values = algorithms[0]->get_max_values();
+        auto& reference_min_values = algorithms[0]->get_min_values();
+	auto reference_name = algorithms[0]->get_name();
 
         if( i > 0 )
         {
-            bool eq_min = std::equal(compare_max_it.begin(), compare_max_it.end(), algorithms[i]->get_max_values().begin());
-            bool eq_max = std::equal(compare_min_it.begin(), compare_min_it.end(), algorithms[i]->get_min_values().begin());
+	    auto& compare_max_values = algorithms[i]->get_max_values();
+	    auto& compare_min_values = algorithms[i]->get_min_values();
+	    auto compare_name = algorithms[i]->get_name();
 
-            if(!eq_max || !eq_min)
-            {
-                for(int j=0; j < algorithms[0]->get_max_values().size(); ++j)
-                {
-                    std::cout << j << ": " << algorithms[0]->get_max_values()[j] << " == " << algorithms[i]->get_max_values()[j] << "\t" << algorithms[0]->get_min_values()[j] << " == " << algorithms[i]->get_min_values()[j] << std::endl;
+	    bool difference_min = check_for_difference(
+		"min",
+		reference_name,
+		reference_min_values,
+		compare_name,
+		compare_min_values
+		);
 
-                    if(algorithms[0]->get_max_values()[j] != algorithms[i]->get_max_values()[j] || algorithms[0]->get_min_values()[j] != algorithms[i]->get_min_values()[j])
-                        break;
-                }
-            }
-
-            std::cout << std::endl;
-
-            if(!eq_min)
-                std::cout << "ERROR: Min values for algorithms " << algorithms[0]->get_name() << " and " << algorithms[i]->get_name() << " aren't equal!" << std::endl;
-
-            if(!eq_max)
-                std::cout << "ERROR: Max values for algorithms " << algorithms[0]->get_name() << " and " << algorithms[i]->get_name() << " aren't equal!" << std::endl;
-
-            if(!eq_max || !eq_min)
-                exit(1);
+	    bool difference_max = check_for_difference(
+		"max",
+		reference_name,
+		reference_max_values,
+		compare_name,
+		compare_max_values
+		);
         }
         
         timings[i] += (finish - start);
@@ -104,6 +160,19 @@ static void timings(
     for (unsigned int i = 0; i < number_of_iterations; ++i)
     {
         auto data = create_white_noise_vector(sample_size);
+
+	TRACE("Input sample contains the following %d values:\n");
+
+#ifdef DEBUG
+	if (verbose)
+	{
+	    for (unsigned int j = 0; j < data.size(); ++j)
+	    {
+		std::cout << '\t' << j << ": " << data[j] << '\n';
+	    }
+	}
+#endif
+
         compare_all_algos(algorithms, data, timings, window_size);
     }
 

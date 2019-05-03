@@ -16,15 +16,14 @@ __global__ void streamingMinMax(
     float const * d_array,
     float * d_min,
     float * d_max,
-    unsigned int array_size,
-    unsigned int min_max_size,
+    unsigned int min_max_elements,
     unsigned int width
     )  
 {
     int const thread_index(blockDim.x * blockIdx.x + threadIdx.x);
     float min, max;
 
-    if (thread_index < min_max_size)
+    if (thread_index < min_max_elements)
     {
 	min = d_array[thread_index];
 	max = d_array[thread_index];
@@ -83,12 +82,14 @@ void streaming_min_max_cuda_plain_calc(
     float const * h_array,
     float * h_min,
     float * h_max,
-    unsigned int array_size,
-    unsigned int min_max_size,
+    unsigned int array_elements,
+    unsigned int min_max_elements,
     unsigned int width
     )
 {
-    unsigned int const total_mem_size((array_size + 2 * min_max_size) * sizeof(float));
+    unsigned int const min_max_size = min_max_elements * sizeof(float);
+    unsigned int const array_size = array_elements * sizeof(float);
+    unsigned int const total_mem_size(array_size + 2 * min_max_size);
     cudaError_t err(cudaSuccess);
     
     //
@@ -100,7 +101,7 @@ void streaming_min_max_cuda_plain_calc(
 	total_mem_size
 	);
 
-    err = cudaMalloc((void **) &d_mem, total_mem_size * sizeof(float));
+    err = cudaMalloc((void **) &d_mem, total_mem_size);
 
     if (err != cudaSuccess)
     {
@@ -124,8 +125,8 @@ void streaming_min_max_cuda_plain_calc(
     //
 
     float *d_array(d_mem);
-    float *d_min(d_mem + array_size * sizeof(float));
-    float *d_max(d_min + min_max_size * sizeof(float));
+    float *d_min(d_mem + array_elements);
+    float *d_max(d_min + min_max_elements);
 
     //
     // copy input vector's data to device memory
@@ -168,8 +169,7 @@ void streaming_min_max_cuda_plain_calc(
 	d_array,
 	d_min,
 	d_max,
-	array_size,
-	min_max_size,
+	min_max_elements,
 	width
 	);    
     err = cudaGetLastError();

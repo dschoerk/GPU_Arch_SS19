@@ -45,7 +45,7 @@ extern "C" void error_at_line(
 #define ERROR(format, ...)			\
     error_at_line(				\
 	EXIT_SUCCESS,				\
-        errno,					\
+        0,					\
         __FILE__,				\
         __LINE__,				\
         format,					\
@@ -53,6 +53,26 @@ extern "C" void error_at_line(
         )
 
 #define ERROR_EXIT(format, ...)			\
+    error_at_line(				\
+        EXIT_FAILURE,				\
+        0,					\
+        __FILE__,				\
+        __LINE__,				\
+        format,					\
+        ## __VA_ARGS__				\
+        )
+
+#define ERROR_WITH_ERRNO(format, ...)		\
+    error_at_line(				\
+	EXIT_SUCCESS,				\
+        errno,					\
+        __FILE__,				\
+        __LINE__,				\
+        format,					\
+        ## __VA_ARGS__				\
+        )
+
+#define ERROR_EXIT_WITH_ERRNO(format, ...)	\
     error_at_line(				\
         EXIT_FAILURE,				\
         errno,					\
