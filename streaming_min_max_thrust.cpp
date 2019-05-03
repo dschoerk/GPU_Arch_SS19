@@ -1,4 +1,5 @@
 #include "streaming_min_max_thrust.h"
+#include "utils.h"
 
 std::string_view streaming_min_max_thrust::get_name(
     ) const
@@ -6,6 +7,12 @@ std::string_view streaming_min_max_thrust::get_name(
     return "thrust";
 }
   
+bool streaming_min_max_thrust::check_against_reference(
+    ) const
+{
+    return false;
+}
+
 void streaming_min_max_thrust::calc(
     std::vector<float> const & array,
     unsigned int width
@@ -16,6 +23,7 @@ void streaming_min_max_thrust::calc(
     minvalues.clear();
     minvalues.resize(array.size() - width + 1);
 
+    TRACE("TODO: Implement this one ...\n");
     // TODO: Insert code here ...
 }
 

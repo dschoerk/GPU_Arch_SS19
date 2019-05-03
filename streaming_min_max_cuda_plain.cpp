@@ -1,6 +1,5 @@
 #include "streaming_min_max_cuda_plain.h"
 #include "streaming_min_max_cuda_plain_cuda.cuh"
-#include "utils.h"
 
 std::string_view streaming_min_max_cuda_plain::get_name(
     ) const
@@ -8,6 +7,12 @@ std::string_view streaming_min_max_cuda_plain::get_name(
     return "cuda plain";
 }
   
+bool streaming_min_max_cuda_plain::check_against_reference(
+    ) const
+{
+    return true;
+}
+
 void streaming_min_max_cuda_plain::calc(
     std::vector<float> const & array,
     unsigned int width

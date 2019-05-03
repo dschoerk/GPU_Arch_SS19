@@ -1,4 +1,5 @@
 #include "streaming_min_max_cuda_streams.h"
+#include "utils.h"
 
 std::string_view streaming_min_max_cuda_streams::get_name(
     ) const
@@ -6,6 +7,12 @@ std::string_view streaming_min_max_cuda_streams::get_name(
     return "cuda streams";
 }
   
+bool streaming_min_max_cuda_streams::check_against_reference(
+    ) const
+{
+    return false;
+}
+
 void streaming_min_max_cuda_streams::calc(
     std::vector<float> const & array,
     unsigned int width
@@ -16,6 +23,7 @@ void streaming_min_max_cuda_streams::calc(
     minvalues.clear();
     minvalues.resize(array.size() - width + 1);
 
+    TRACE("TODO: Implement this one ...\n");
     // TODO: Insert code here ...
 }
 

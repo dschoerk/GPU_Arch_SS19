@@ -111,11 +111,15 @@ static void compare_all_algos(
         algorithms[i]->calc(data, window_size);
         auto finish = std::chrono::high_resolution_clock::now();
 
+	//
+	// store results of Lemire's algorithms as a reference for
+	// a diff-check
+	//
         auto& reference_max_values = algorithms[0]->get_max_values();
         auto& reference_min_values = algorithms[0]->get_min_values();
 	auto reference_name = algorithms[0]->get_name();
 
-        if( i > 0 )
+        if (algorithms[i]->check_against_reference())
         {
 	    auto& compare_max_values = algorithms[i]->get_max_values();
 	    auto& compare_min_values = algorithms[i]->get_min_values();

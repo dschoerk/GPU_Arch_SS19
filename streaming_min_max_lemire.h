@@ -11,6 +11,9 @@ public:
     std::string_view get_name(
 	) const;
     
+    bool check_against_reference(
+	) const;
+
     void calc(
 	std::vector<float> const & array,
 	unsigned int width
