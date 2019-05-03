@@ -30,6 +30,15 @@ benchmarking framework.
 
     std::string_view get_name() const
 
+#### `check_against_reference()`
+
+This function is intended to return a boolean which is used by the
+benchmarking framework to decide on whether or not the output vector
+of minima and maxima shall be compare against the output computed by
+Lemire's algorithms.
+
+    bool check_against_reference() const
+
 #### `calc()`
 
 This function is intended to do the main computation task of the
