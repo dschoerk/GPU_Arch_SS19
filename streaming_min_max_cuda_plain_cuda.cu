@@ -5,6 +5,12 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
+//
+// Obtained blocksize from device query - needs to be adapted to device
+//
+#define BLOCK_SIZE 1024
+#define MAX_WIDTH 20
+
 /**
  * CUDA kernel device code
  *
@@ -16,28 +22,62 @@ __global__ void streamingMinMax(
     float const * d_array,
     float * d_min,
     float * d_max,
-    unsigned int min_max_elements,
-    
+    unsigned int min_max_elements,  
     unsigned int width
     )  
 {
     int const thread_index(blockDim.x * blockIdx.x + threadIdx.x);
     float min, max;
 
+    //
+    // use shared memory as cache for the relevant part of d_array
+    //
+    __shared__ float d_array_cache[BLOCK_SIZE + MAX_WIDTH];
+
+    const int max_thread_index = min_max_elements + width;
+	
+    if (thread_index < max_thread_index)
+    {
+	d_array_cache[threadIdx.x] = d_array[thread_index];
+
+	if ((threadIdx.x < width) && (thread_index + BLOCK_SIZE < max_thread_index))
+	{
+	    d_array_cache[BLOCK_SIZE + threadIdx.x] = d_array[BLOCK_SIZE + thread_index];
+	}
+    }
+
+    //
+    // synchronized threads to ensure that cached data is available
+    //
+    __syncthreads();
+    
+    //
+    // now work on cache
+    //
     if (thread_index < min_max_elements)
     {
-	min = d_array[thread_index];
-	max = d_array[thread_index];
+	min = d_array_cache[threadIdx.x];
+	max = d_array_cache[threadIdx.x];
 	
 	for (int i = 1; i < width; ++i)
 	{
-	    float current = d_array[thread_index + i];
-	    
+	    float current = d_array_cache[threadIdx.x + i];
+
+	    //
+	    // Tried the following here, but that deteriorated the performance
+	    //
+	    // min = fminf(current, min);
+	    //
 	    if (current < min)
 	    {
 		min = current;
 	    }
 
+	    //
+	    // Tried the following here, but that deteriorated the performance
+	    //
+	    // max = fmaxf(current, max);
+	    //
 	    if (current > max)
 	    {
 		max = current;
