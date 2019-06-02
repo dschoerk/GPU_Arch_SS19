@@ -1,0 +1,21 @@
+https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#performance-guidelines
+
+* Try using pinned memory
+** https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8d5c17670f16ac4fc8fcb4181cb490c
+** https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1g81fd4101862bbefdb42a62d60e515eea
+** https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1gc00502b44e5f1bdc0b424487ebb08db0
+** DONE
+
+* On top of that, try using write combined memory
+** https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#write-combining-memory
+** WON'T DO: doesn't work with cudaHostRegister()
+
+* shared memory as per block cache for the data read from or written
+  to global memory
+** see https://docs.nvidia.com/cuda/cuda-c-programming-guide/#shared-memory
+** DONE
+
+* check how memory addresses map to memory banks in order to schedule the memory requests so as to minimize bank conflicts
+** see https://devblogs.nvidia.com/using-shared-memory-cuda-cc/
+
+* re-think the algorithm
