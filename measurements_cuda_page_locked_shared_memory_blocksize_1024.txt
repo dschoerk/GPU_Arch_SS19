@@ -1,0 +1,60 @@
+
+Performing a comparison using the following parameters:
+  window_size = 10
+  sample_size = 1000
+  number_of_iterations = 1
+
+lemire = 0.000631231 seconds
+cuda plain = 6.40897 seconds
+thrust = 1.4332e-05 seconds
+cuda streams = 1.5501e-05 seconds
+
+Performing a comparison using the following parameters:
+  window_size = 10
+  sample_size = 10000
+  number_of_iterations = 1
+
+lemire = 0.00437581 seconds
+cuda plain = 6.3175 seconds
+thrust = 0.000132392 seconds
+cuda streams = 0.000119781 seconds
+
+Performing a comparison using the following parameters:
+  window_size = 10
+  sample_size = 100000
+  number_of_iterations = 1
+
+lemire = 0.0322219 seconds
+cuda plain = 6.34558 seconds
+thrust = 0.00119605 seconds
+cuda streams = 0.00119101 seconds
+
+Performing a comparison using the following parameters:
+  window_size = 10
+  sample_size = 1000000
+  number_of_iterations = 1
+
+lemire = 0.252284 seconds
+cuda plain = 6.31932 seconds
+thrust = 0.0101569 seconds
+cuda streams = 0.0101255 seconds
+
+Performing a comparison using the following parameters:
+  window_size = 10
+  sample_size = 10000000
+  number_of_iterations = 1
+
+lemire = 2.33501 seconds
+cuda plain = 6.37415 seconds
+thrust = 0.0651996 seconds
+cuda streams = 0.0656854 seconds
+
+Performing a comparison using the following parameters:
+  window_size = 10
+  sample_size = 100000000
+  number_of_iterations = 1
+
+lemire = 23.4678 seconds
+cuda plain = 7.36255 seconds
+thrust = 0.644668 seconds
+cuda streams = 0.644818 seconds
