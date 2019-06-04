@@ -15,6 +15,7 @@
 #include <cerrno>
 #include <climits>
 #include <limits>
+#include <algorithm>
 
 #ifndef __linux__ 
 char *program_invocation_name("<not yet set>");
