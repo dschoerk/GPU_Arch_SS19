@@ -106,8 +106,11 @@ static void compare_all_algos(
     unsigned int window_size
     )
 {
+    
+
     for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
+        auto reference_name = algorithms[0]->get_name();
         auto start = std::chrono::high_resolution_clock::now();
         algorithms[i]->calc(data, window_size);
         auto finish = std::chrono::high_resolution_clock::now();
@@ -118,29 +121,40 @@ static void compare_all_algos(
 	//
         auto& reference_max_values = algorithms[0]->get_max_values();
         auto& reference_min_values = algorithms[0]->get_min_values();
-	auto reference_name = algorithms[0]->get_name();
+	    
+
+        /*printf("Ref Values\n");
+        for(auto v : reference_min_values) 
+            printf("%.2f, ", v);
+        printf("\n");*/
+
 
         if (algorithms[i]->check_against_reference())
         {
-	    auto& compare_max_values = algorithms[i]->get_max_values();
-	    auto& compare_min_values = algorithms[i]->get_min_values();
-	    auto compare_name = algorithms[i]->get_name();
+            auto& compare_max_values = algorithms[i]->get_max_values();
+            auto& compare_min_values = algorithms[i]->get_min_values();
+            auto compare_name = algorithms[i]->get_name();
 
-	    bool difference_min = check_for_difference(
-		"min",
-		reference_name,
-		reference_min_values,
-		compare_name,
-		compare_min_values
-		);
+            bool difference_min = check_for_difference(
+                "min",
+                reference_name,
+                reference_min_values,
+                compare_name,
+                compare_min_values
+            );
 
-	    bool difference_max = check_for_difference(
-		"max",
-		reference_name,
-		reference_max_values,
-		compare_name,
-		compare_max_values
-		);
+            /*printf("%s Values\n", std::string(compare_name).c_str());
+            for(auto v : compare_min_values) 
+                printf("%.2f, ", v);
+            printf("\n");*/
+
+            bool difference_max = check_for_difference(
+                "max",
+                reference_name,
+                reference_max_values,
+                compare_name,
+                compare_max_values
+            );
         }
         
         timings[i] += (finish - start);
@@ -165,7 +179,7 @@ static void timings(
     for (unsigned int i = 0; i < number_of_iterations; ++i)
     {
         auto data = create_white_noise_vector(sample_size);
-
+        
 	TRACE("Input sample contains the following %d values:\n");
 
 #ifdef DEBUG
