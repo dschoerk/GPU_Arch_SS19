@@ -38,12 +38,12 @@ __global__ void streamingMinMax(
 	
     if (thread_index < max_thread_index)
     {
-	d_array_cache[threadIdx.x] = d_array[thread_index];
+		d_array_cache[threadIdx.x] = d_array[thread_index];
 
-	if ((threadIdx.x < width) && (thread_index + BLOCK_SIZE < max_thread_index))
-	{
-	    d_array_cache[BLOCK_SIZE + threadIdx.x] = d_array[BLOCK_SIZE + thread_index];
-	}
+		if ((threadIdx.x < width) && (thread_index + BLOCK_SIZE < max_thread_index))
+		{
+			d_array_cache[BLOCK_SIZE + threadIdx.x] = d_array[BLOCK_SIZE + thread_index];
+		}
     }
 
     //
@@ -56,36 +56,36 @@ __global__ void streamingMinMax(
     //
     if (thread_index < min_max_elements)
     {
-	min = d_array_cache[threadIdx.x];
-	max = d_array_cache[threadIdx.x];
-	
-	for (int i = 1; i < width; ++i)
-	{
-	    float current = d_array_cache[threadIdx.x + i];
+		min = d_array_cache[threadIdx.x];
+		max = d_array_cache[threadIdx.x];
+		
+		for (int i = 1; i < width; ++i)
+		{
+			float current = d_array_cache[threadIdx.x + i];
 
-	    //
-	    // Tried the following here, but that deteriorated the performance
-	    //
-	    // min = fminf(current, min);
-	    //
-	    if (current < min)
-	    {
-		min = current;
-	    }
+			//
+			// Tried the following here, but that deteriorated the performance
+			//
+			// min = fminf(current, min);
+			//
+			if (current < min)
+			{
+			min = current;
+			}
 
-	    //
-	    // Tried the following here, but that deteriorated the performance
-	    //
-	    // max = fmaxf(current, max);
-	    //
-	    if (current > max)
-	    {
-		max = current;
-	    }
-	}
+			//
+			// Tried the following here, but that deteriorated the performance
+			//
+			// max = fmaxf(current, max);
+			//
+			if (current > max)
+			{
+			max = current;
+			}
+		}
 
-	d_min[thread_index] = min;
-	d_max[thread_index] = max;
+		d_min[thread_index] = min;
+		d_max[thread_index] = max;
     }
 }
 
@@ -105,63 +105,63 @@ static void streaming_min_max_cuda_plain_clean_up(
 
     if (d_array != nullptr)
     {
-	TRACE(
-	    "Unregistering host memory at 0x%lx ...\n",
-	    (unsigned long) gh_array
-	    );
+		TRACE(
+			"Unregistering host memory at 0x%lx ...\n",
+			(unsigned long) gh_array
+			);
 
-	err = cudaHostUnregister((void *) gh_array);
+		err = cudaHostUnregister((void *) gh_array);
 
-	if (err != cudaSuccess)
-	{
-	    ERROR_EXIT(
-		"Failed to unregister memory at 0x%lx - %s",
-		(unsigned long) gh_array,
-		cudaGetErrorString(err)
-		);
-	}
+		if (err != cudaSuccess)
+		{
+			ERROR_EXIT(
+			"Failed to unregister memory at 0x%lx - %s",
+			(unsigned long) gh_array,
+			cudaGetErrorString(err)
+			);
+		}
     }
 
     d_array = nullptr;
 
     if (d_min != nullptr)
     {
-	TRACE(
-	    "Unregistering host memory at 0x%lx ...\n",
-	    (unsigned long) gh_min
-	    );
+		TRACE(
+			"Unregistering host memory at 0x%lx ...\n",
+			(unsigned long) gh_min
+			);
 
-	err = cudaHostUnregister(gh_min);
+		err = cudaHostUnregister(gh_min);
 
-	if (err != cudaSuccess)
-	{
-	    ERROR_EXIT(
-		"Failed to unregister memory at 0x%lx - %s",
-		(unsigned long) gh_min,
-		cudaGetErrorString(err)
-		);
-	}
+		if (err != cudaSuccess)
+		{
+			ERROR_EXIT(
+			"Failed to unregister memory at 0x%lx - %s",
+			(unsigned long) gh_min,
+			cudaGetErrorString(err)
+			);
+		}
     }
 
     d_min = nullptr;
 
     if (d_max != nullptr)
     {
-	TRACE(
-	    "Unregistering host memory at 0x%lx ...\n",
-	    (unsigned long) gh_max
-	    );
+		TRACE(
+			"Unregistering host memory at 0x%lx ...\n",
+			(unsigned long) gh_max
+			);
 
-	err = cudaHostUnregister(gh_max);
+		err = cudaHostUnregister(gh_max);
 
-	if (err != cudaSuccess)
-	{
-	    ERROR_EXIT(
-		"Failed to unregister memory at 0x%lx - %s",
-		(unsigned long) gh_max,
-		cudaGetErrorString(err)
-		);
-	}
+		if (err != cudaSuccess)
+		{
+			ERROR_EXIT(
+			"Failed to unregister memory at 0x%lx - %s",
+			(unsigned long) gh_max,
+			cudaGetErrorString(err)
+			);
+		}
     }
 
     d_max = nullptr;
@@ -185,7 +185,7 @@ static void register_host_memory(
     
     if (err != cudaSuccess)
     {
-	streaming_min_max_cuda_plain_clean_up();
+		streaming_min_max_cuda_plain_clean_up();
 
         ERROR_EXIT(
 	    "Failed to register %u bytes of host memory at 0x%lx for use with CUDA - %s",
@@ -211,7 +211,7 @@ static void register_host_memory(
 
     if (err != cudaSuccess)
     {
-	streaming_min_max_cuda_plain_clean_up();
+		streaming_min_max_cuda_plain_clean_up();
 
         ERROR_EXIT(
 	    "Failed to obtain device pointer for %u bytes of host memory at 0x%lx - %s",
