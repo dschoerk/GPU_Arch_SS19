@@ -257,7 +257,7 @@ int main(
     )
 {
     unsigned int window_size = 50;
-    unsigned int sample_size = 100000;
+    unsigned int sample_size = 10000000;
     unsigned int number_of_iterations = 1;
 
 #ifndef __linux__ 
