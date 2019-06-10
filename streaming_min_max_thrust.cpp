@@ -1,4 +1,5 @@
 #include "streaming_min_max_thrust.h"
+#include "streaming_min_max_thrust_cuda.cuh"
 #include "utils.h"
 
 std::string_view streaming_min_max_thrust::get_name(
@@ -23,8 +24,7 @@ void streaming_min_max_thrust::calc(
     minvalues.clear();
     minvalues.resize(array.size() - width + 1);
 
-    TRACE("TODO: Implement this one ...\n");
-    // TODO: Insert code here ...
+    streaming_min_max_thrust_calc(array, width, minvalues, maxvalues);
 }
 
 std::vector<float> const & streaming_min_max_thrust::get_max_values(
