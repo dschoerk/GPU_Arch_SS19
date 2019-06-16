@@ -277,8 +277,6 @@ int main(
 {
     unsigned int window_size = 50;
     unsigned int sample_size = 10000000;
-    unsigned int window_size = 3;
-    unsigned int sample_size = 10;
     unsigned int number_of_iterations = 1;
 
     program_invocation_name = argv[0];
