@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <thread>
 
 #ifdef __linux__ 
     #include <getopt.h>
@@ -21,6 +22,11 @@
 #include <climits>
 #include <limits>
 #include <algorithm>
+
+#define ENABLE_NVTX
+#ifdef ENABLE_NVTX
+    #include <nvToolsExt.h>
+#endif
 
 #ifndef __linux__ 
 char *program_invocation_name("<not yet set>");
@@ -116,9 +122,22 @@ static void compare_all_algos(
     for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
         auto reference_name = algorithms[0]->get_name();
+        auto compare_name = algorithms[i]->get_name();
         auto start = std::chrono::high_resolution_clock::now();
+
+#ifdef ENABLE_NVTX
+        nvtxRangeId_t nxtxRange = nvtxRangeStartA(std::string(compare_name).c_str());
+#endif
+
         algorithms[i]->calc(data, window_size);
+
+#ifdef ENABLE_NVTX
+        nvtxRangeEnd(nxtxRange);
+#endif
+        
         auto finish = std::chrono::high_resolution_clock::now();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // just to see a separation between nvtx ranges in the profiler
 
 	//
 	// store results of Lemire's algorithms as a reference for
@@ -138,7 +157,7 @@ static void compare_all_algos(
         {
             auto& compare_max_values = algorithms[i]->get_max_values();
             auto& compare_min_values = algorithms[i]->get_min_values();
-            auto compare_name = algorithms[i]->get_name();
+            
 
             bool difference_min = check_for_difference(
                 "min",
@@ -275,7 +294,7 @@ int main(
     char **argv
     )
 {
-    unsigned int window_size = 50;
+    unsigned int window_size = 500;
     unsigned int sample_size = 10000000;
     unsigned int number_of_iterations = 1;
 
