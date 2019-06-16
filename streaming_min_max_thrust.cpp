@@ -11,7 +11,7 @@ std::string_view streaming_min_max_thrust::get_name(
 bool streaming_min_max_thrust::check_against_reference(
     ) const
 {
-    return false;
+    return true;
 }
 
 void streaming_min_max_thrust::calc(
