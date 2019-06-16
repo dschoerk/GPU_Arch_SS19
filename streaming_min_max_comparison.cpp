@@ -10,7 +10,12 @@
 #ifdef __linux__ 
     #include <getopt.h>
     #include <error.h>
+#else
+    #include "getopt.h"
+    //extern int opterr;
+    extern int optind;
 #endif
+
 
 #include <cerrno>
 #include <climits>
@@ -272,14 +277,16 @@ int main(
 {
     unsigned int window_size = 50;
     unsigned int sample_size = 10000000;
+    unsigned int window_size = 3;
+    unsigned int sample_size = 10;
     unsigned int number_of_iterations = 1;
 
-#ifndef __linux__ 
     program_invocation_name = argv[0];
-#endif
+
+
+    char c;
 
 #ifdef __linux__
-    char c;
     struct option long_options[] =
     {
         {"help", no_argument, NULL, 'h'},
@@ -291,20 +298,30 @@ int main(
         {"iterations", required_argument, NULL, 'i'},
         {0, 0, 0, 0}
     };
+#endif
 
     while (
+#ifdef __linux__
 	(c = getopt_long(
+#else
+    (c = getopt(
+#endif
 	    argc,
 	    argv,
 #ifdef DEBUG
 	    "v"
 #endif // DEBUG	
-	    "hw:s:i:",
-	    long_options,
-	    NULL)
+	    "hw:s:i:"
+#ifdef __linux__
+	    ,long_options,
+        NULL
+#endif
+	    )
 	    ) != -1
 	)
     {
+        std::cout << c << std::endl;
+
         switch (c)
         {
             case 'h':
@@ -316,13 +333,13 @@ int main(
                 break;
 #endif // DEBUG	
             case 'w':
-                window_size = checked_to_uint(optarg);
+                window_size = atoi(optarg);
                 break;
             case 's':
-                sample_size = checked_to_uint(optarg);
+                sample_size = atoi(optarg);
                 break;
             case 'i':
-                number_of_iterations = checked_to_uint(optarg);
+                number_of_iterations = atoi(optarg);
                 break;
             case '?':
             default:
@@ -335,7 +352,27 @@ int main(
     {
         usage(std::cerr, EXIT_FAILURE);
     }
-#endif // __ linux __
+// #else
+
+    //printf("prog: %s\n", program_invocation_name);
+
+    /*if(argc != 4)
+        std::cout << "params: window_size, sample_size, iterations" << std::endl;
+        return -1;
+
+    std::cout << "p?" << std::endl;
+    std::cout << argv[1] << std::endl;
+    std::cout << argv[2] << std::endl;
+    std::cout << argv[3] << std::endl;
+
+    window_size = atoi(argv[1]);
+    sample_size = atoi(argv[2]);
+    number_of_iterations = atoi(argv[3]);
+
+    std::cout << "run?" << std::endl;*/
+    
+
+// #endif // __ linux __
     
     timings(algorithms, window_size, sample_size, number_of_iterations);
 	    
