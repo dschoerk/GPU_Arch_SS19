@@ -19,3 +19,4 @@ https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#performance-gui
 ** see https://devblogs.nvidia.com/using-shared-memory-cuda-cc/
 
 * re-think the algorithm
+** Algorithm is pretty good (especially if the window size is small)

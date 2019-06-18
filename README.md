@@ -98,23 +98,74 @@ implementation](https://github.com/lemire/runningmaxmin) of the
 algorithm. This implementation is a CPU-only implementation (i.e., the
 GPU is *not* involved here).
 
-#### Plain CUDA implementation
+#### Plain CUDA implementation - explicit memory allocation and transfer - `cudaMalloc()`and `cudaMemCpy()`
 
-The files `streaming_min_max_cuda_plain.cpp`,
-`streaming_min_max_cuda_plain_cuda.cu`,
-`streaming_min_max_cuda_plain_cuda.cuh` and
-`streaming_min_max_cuda_plain.h` currently provide a rather naive (and
+The files `streaming_min_max_cuda_plain_malloc.cpp`,
+`streaming_min_max_cuda_plain_malloc_cuda.cu`,
+`streaming_min_max_cuda_plain_malloc_cuda.cuh` and
+`streaming_min_max_cuda_plain_malloc.h` provides a rather simple (and
 thus inperformant) GPU implementation using plain
-[CUDA](https://developer.nvidia.com/cuda-zone).
+[CUDA](https://developer.nvidia.com/cuda-zone) with `cudaMalloc()`and
+`cudaMemCpy()` for allocating and transferring data between host and
+device memory.
 
-Hereby the files `streaming_min_max_cuda_plain_cuda.cu` and
-`streaming_min_max_cuda_plain_cuda.cuh` contain the implementation of
-the CUDA kernel and the CUDA-related CPU code (e.g., memory
-allocation, memory transfer, kernel launch) whereas
-`streaming_min_max_cuda_plain.cpp` and
-`streaming_min_max_cuda_plain.h` contain the implementation of the
-`streaming_min_max_algorithm_interface` interface for integrate with
-the [benchmarking framework](Streaming-min-max-benchmark-framework).
+Hereby the files `streaming_min_max_cuda_plain_malloc_cuda.cu` and
+`streaming_min_max_cuda_plain_malloc_cuda.cuh` contain the
+implementation of the CUDA kernel and the CUDA-related CPU code (e.g.,
+memory allocation, memory transfer, kernel launch) whereas
+`streaming_min_max_cuda_plain_malloc.cpp` and
+`streaming_min_max_cuda_plain_malloc.h` contain the implementation of
+the `streaming_min_max_algorithm_interface` interface for integrate
+with the [benchmarking
+framework](Streaming-min-max-benchmark-framework).
+
+#### Plain CUDA implementation - page locked memory - `cudaHostRegister()`
+
+The files `streaming_min_max_cuda_plain_page_locked.cpp`,
+`streaming_min_max_cuda_plain_page_locked_cuda.cu`,
+`streaming_min_max_cuda_plain_page_locked_cuda.cuh` and
+`streaming_min_max_cuda_plain_page_locked.h` provides the same simple
+(and thus inperformant) GPU implementation using plain
+[CUDA](https://developer.nvidia.com/cuda-zone) with page locked host
+memory which is registered with `cudaHostRegister()` to allow for
+using this memory by the GPU as well.
+
+Hereby the files `streaming_min_max_cuda_plain_page_locked_cuda.cu`
+and `streaming_min_max_cuda_plain_page_locked_cuda.cuh` contain the
+implementation of the CUDA kernel and the CUDA-related CPU code (e.g.,
+memory allocation, memory transfer, kernel launch) whereas
+`streaming_min_max_cuda_plain_page_locked.cpp` and
+`streaming_min_max_cuda_plain_page_locked.h` contain the
+implementation of the `streaming_min_max_algorithm_interface`
+interface for integrate with the [benchmarking
+framework](Streaming-min-max-benchmark-framework).
+
+#### Plain CUDA implementation - page locked memory with shared cache - `cudaHostRegister()` and ` __shared__`
+
+The files `streaming_min_max_cuda_plain_page_locked_shared.cpp`,
+`streaming_min_max_cuda_plain_page_locked_cuda_shared.cu`,
+`streaming_min_max_cuda_plain_page_locked_cuda_shared.cuh` and
+`streaming_min_max_cuda_plain_page_locked_shared.h` provides almost
+the same simple GPU implementation using plain
+[CUDA](https://developer.nvidia.com/cuda-zone) with page locked host
+memory which is registered with `cudaHostRegister()` to allow for
+using this memory by the GPU as well. To prevent having to pay the
+performance penalty upon access to the page locked host memory, shared
+memory on the device is used a a program controlled cache for all
+threads of a thread block (i.e., each element from host memory is only
+read *once* into the cache. All subsequent reads take make use of the
+cached value in the shared memory.
+
+Hereby the files
+`streaming_min_max_cuda_plain_page_locked_shared_cuda.cu` and
+`streaming_min_max_cuda_plain_page_locked_shared_cuda.cuh` contain the
+implementation of the CUDA kernel and the CUDA-related CPU code (e.g.,
+memory allocation, memory transfer, kernel launch) whereas
+`streaming_min_max_cuda_plain_page_locked_shared.cpp` and
+`streaming_min_max_cuda_plain_page_locked_shared.h` contain the
+implementation of the `streaming_min_max_algorithm_interface`
+interface for integrate with the [benchmarking
+framework](Streaming-min-max-benchmark-framework).
 
 #### CUDA streams implementation
 
