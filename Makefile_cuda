@@ -245,7 +245,7 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
 INCLUDES  := -I$(CUDA_PATH)/samples/common/inc
-LIBRARIES :=
+LIBRARIES := -lnvToolsExt
 
 ################################################################################
 
@@ -289,7 +289,8 @@ OBJECTS := \
 	streaming_min_max_cuda_plain.o \
 	streaming_min_max_thrust.o \
 	streaming_min_max_cuda_streams.o \
-	streaming_min_max_cuda_plain_cuda.o
+	streaming_min_max_cuda_plain_cuda.o \
+	streaming_min_max_thrust_cuda.o
 
 %.o: %.cpp
 #
@@ -322,6 +323,7 @@ streaming_min_max_algorithms.o: streaming_min_max_algorithms.cpp streaming_min_m
 streaming_min_max_comparison.o: streaming_min_max_comparison.cpp streaming_min_max_algorithms.h streaming_min_max_algorithm_interface.h
 streaming_min_max_cuda_plain.o:  streaming_min_max_cuda_plain.cpp streaming_min_max_cuda_plain_cuda.cuh streaming_min_max_cuda_plain.h streaming_min_max_algorithm_interface.h
 streaming_min_max_cuda_plain_cuda.o: streaming_min_max_cuda_plain_cuda.cu streaming_min_max_cuda_plain_cuda.cuh
+streaming_min_max_thrust_cuda.o: streaming_min_max_thrust_cuda.cu streaming_min_max_thrust_cuda.cuh
 streaming_min_max_thrust.o: streaming_min_max_thrust.cpp streaming_min_max_thrust.h streaming_min_max_algorithm_interface.h
 streaming_min_max_cuda_streams.o: streaming_min_max_cuda_streams.cpp streaming_min_max_cuda_streams.h streaming_min_max_algorithm_interface.h
 streaming_min_max_lemire.o: streaming_min_max_lemire.h streaming_min_max_algorithm_interface.h
