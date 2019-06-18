@@ -1,9 +1,9 @@
-#ifndef STREAMING_MIN_MAX_CUDA_PLAIN_H
-#define STREAMING_MIN_MAX_CUDA_PLAIN_H
+#ifndef STREAMING_MIN_MAX_CUDA_PLAIN_PAGE_LOCKED_H
+#define STREAMING_MIN_MAX_CUDA_PLAIN_PAGE_LOCKED_H
 
 #include "streaming_min_max_algorithm_interface.h"
 
-class streaming_min_max_cuda_plain:
+class streaming_min_max_cuda_plain_page_locked:
   public streaming_min_max_algorithm_interface
 {
 public:

@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "streaming_min_max_cuda_plain_cuda.cuh"
+#include "streaming_min_max_cuda_plain_malloc_cuda.cuh"
 
 // For the CUDA runtime routines (prefixed with "cuda")
 #include <cuda_runtime.h>
@@ -12,12 +12,11 @@
  * d_array within a window of size \a width and stores these these
  * minima and maxima in \a d_min and \a d_max respectively.
  */
-__global__ void streamingMinMax(
+__global__ void streaming_min_max_cuda_plain_malloc_calc(
     float const * d_array,
     float * d_min,
     float * d_max,
     unsigned int min_max_elements,
-    
     unsigned int width
     )  
 {
@@ -79,7 +78,7 @@ static void streaming_min_max_cuda_plain_clean_up(
     d_mem = NULL;
 }
 
-void streaming_min_max_cuda_plain_calc(
+void streaming_min_max_cuda_plain_malloc_calc(
     float const * h_array,
     float * h_min,
     float * h_max,
@@ -91,7 +90,39 @@ void streaming_min_max_cuda_plain_calc(
     unsigned int const min_max_size = min_max_elements * sizeof(float);
     unsigned int const array_size = array_elements * sizeof(float);
     unsigned int const total_mem_size(array_size + 2 * min_max_size);
-    cudaError_t err(cudaSuccess);
+    cudaError_t err(cudaSuccess);    
+    int dev_count(0);
+    cudaDeviceProp dev_prop;
+
+    //
+    // query device properties
+    //
+
+    (void) cudaGetDeviceCount(&dev_count);
+    (void) cudaGetDeviceProperties(&dev_prop, 0);
+
+    TRACE(
+	"Found %d devices and queried the following properties for device %d ...\n"
+	"\tName: %s\n"
+	"\tGlobal memory [bytes]: %u\n"
+	"\tShared memory per block [bytes]: %u\n"
+	"\tRegisters per block: %u\n"
+	"\tWarp size: %u\n"
+	"\tMaximum threads per block: %u\n"
+	"\tCan map host memory: %s\n",
+	dev_count,
+	0,
+	dev_prop.name,
+	dev_prop.totalGlobalMem,
+	dev_prop.sharedMemPerBlock,
+	dev_prop.regsPerBlock,
+	dev_prop.warpSize,
+	dev_prop.maxThreadsPerBlock,
+	(dev_prop.canMapHostMemory == 0) ? "no": "yes"
+	);   
+
+    int const threadsPerBlock(dev_prop.maxThreadsPerBlock);
+    int const blocksPerGrid((array_elements + threadsPerBlock - 1) / threadsPerBlock);
     
     //
     // allocate device memory
@@ -157,16 +188,13 @@ void streaming_min_max_cuda_plain_calc(
     // launch the CUDA kernel
     //
 
-    int const threadsPerBlock(256);
-    int const blocksPerGrid((array_size + threadsPerBlock - 1) / threadsPerBlock);
-
     TRACE(
 	"Launching CUDA kernel with %d blocks of %d threads ...\n",
 	blocksPerGrid,
 	threadsPerBlock
 	);   
 
-    streamingMinMax<<<blocksPerGrid, threadsPerBlock>>>(
+    streaming_min_max_cuda_plain_malloc_calc<<<blocksPerGrid, threadsPerBlock>>>(
 	d_array,
 	d_min,
 	d_max,

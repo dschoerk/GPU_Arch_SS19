@@ -1,21 +1,11 @@
 #include "utils.h"
-#include "streaming_min_max_cuda_plain_cuda.cuh"
+#include "streaming_min_max_cuda_plain_page_locked_cuda.cuh"
 
 // For the CUDA runtime routines (prefixed with "cuda")
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
 #include <iostream>
-
-//
-// Obtained blocksize from device query - needs to be adapted to device
-//
-#define BLOCK_SIZE 1024
-
-//
-// Setting maximum value for window with to blocksize
-//
-#define MAX_WIDTH BLOCK_SIZE
 
 /**
  * CUDA kernel device code
@@ -24,74 +14,39 @@
  * d_array within a window of size \a width and stores these these
  * minima and maxima in \a d_min and \a d_max respectively.
  */
-__global__ void streamingMinMax(
+__global__ void streaming_min_max_cuda_plain_page_locked_calc(
     float const * d_array,
     float * d_min,
     float * d_max,
     unsigned int min_max_elements,  
     unsigned int width
-    )  
+   )  
 {
     int const thread_index(blockDim.x * blockIdx.x + threadIdx.x);
     float min, max;
 
-    //
-    // use shared memory as cache for the relevant part of d_array
-    //
-    __shared__ float d_array_cache[BLOCK_SIZE + MAX_WIDTH];
-
-    const int max_thread_index = min_max_elements + width;
-	
-    if (thread_index < max_thread_index)
-    {
-		d_array_cache[threadIdx.x] = d_array[thread_index];
-
-		if ((threadIdx.x < width) && (thread_index + BLOCK_SIZE < max_thread_index))
-		{
-			d_array_cache[BLOCK_SIZE + threadIdx.x] = d_array[BLOCK_SIZE + thread_index];
-		}
-    }
-
-    //
-    // synchronized threads to ensure that cached data is available
-    //
-    __syncthreads();
-    
-    //
-    // now work on cache
-    //
     if (thread_index < min_max_elements)
     {
-		min = d_array_cache[threadIdx.x];
-		max = d_array_cache[threadIdx.x];
-		
-		for (int i = 1; i < width; ++i)
-		{
-			float current = d_array_cache[threadIdx.x + i];
+	min = d_array[thread_index];
+	max = d_array[thread_index];
+	
+	for (int i = 1; i < width; ++i)
+	{
+	    float current = d_array[thread_index + i];
+	    
+	    if (current < min)
+	    {
+		min = current;
+	    }
 
-			//
-			// Tried the following here, but that deteriorated the performance
-			//
-			// min = fminf(current, min);
-			//
-			if (current < min)
-			{
-			min = current;
-			}
+	    if (current > max)
+	    {
+		max = current;
+	    }
+	}
 
-			//
-			// Tried the following here, but that deteriorated the performance
-			//
-			// max = fmaxf(current, max);
-			//
-			if (current > max)
-			{
-			max = current;
-			}
-		}
-
-		d_min[thread_index] = min;
-		d_max[thread_index] = max;
+	d_min[thread_index] = min;
+	d_max[thread_index] = max;
     }
 }
 
@@ -235,7 +190,7 @@ static void register_host_memory(
 	);
 }
 
-void streaming_min_max_cuda_plain_calc(
+void streaming_min_max_cuda_plain_page_locked_calc(
     float const * h_array,
     float * h_min,
     float * h_max,
@@ -278,31 +233,7 @@ void streaming_min_max_cuda_plain_calc(
 	);   
     
     int const threadsPerBlock(dev_prop.maxThreadsPerBlock);
-    int const blocksPerGrid((array_size + threadsPerBlock - 1) / threadsPerBlock);
-
-    //
-    // sanity check block size and window width against statically configured
-    // maximum values
-    //
-    if (threadsPerBlock > BLOCK_SIZE)
-    {
-	std::cout << "Number of threads per block " << threadsPerBlock
-		  << " exceeds statically configured maximum block size "
-		  << BLOCK_SIZE << '\n'
-		  << "Skipping execution! - Increase BLOCK_SIZE and re-build!\n";
-
-	return;
-    }
-
-    if (width > MAX_WIDTH)
-    {
-	std::cout << "Window width " << width
-		  << " exceeds statically configured maximum window width "
-		  << MAX_WIDTH << '\n'
-		  << "Skipping execution! - Increase MAX_WIDTH and re-build!\n";
-	
-	return;
-    }
+    int const blocksPerGrid((array_elements + threadsPerBlock - 1) / threadsPerBlock);
 
     //
     // register host memory with device
@@ -339,7 +270,7 @@ void streaming_min_max_cuda_plain_calc(
 	threadsPerBlock
 	);   
 
-    streamingMinMax<<<blocksPerGrid, threadsPerBlock>>>(
+    streaming_min_max_cuda_plain_page_locked_calc<<<blocksPerGrid, threadsPerBlock>>>(
 	d_array,
 	d_min,
 	d_max,
