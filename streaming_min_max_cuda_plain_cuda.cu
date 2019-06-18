@@ -5,11 +5,17 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
+#include <iostream>
+
 //
 // Obtained blocksize from device query - needs to be adapted to device
 //
 #define BLOCK_SIZE 1024
-#define MAX_WIDTH 20
+
+//
+// Setting maximum value for window with to blocksize
+//
+#define MAX_WIDTH BLOCK_SIZE
 
 /**
  * CUDA kernel device code
@@ -273,6 +279,30 @@ void streaming_min_max_cuda_plain_calc(
     
     int const threadsPerBlock(dev_prop.maxThreadsPerBlock);
     int const blocksPerGrid((array_size + threadsPerBlock - 1) / threadsPerBlock);
+
+    //
+    // sanity check block size and window width against statically configured
+    // maximum values
+    //
+    if (threadsPerBlock > BLOCK_SIZE)
+    {
+	std::cout << "Number of threads per block " << threadsPerBlock
+		  << " exceeds statically configured maximum block size "
+		  << BLOCK_SIZE << '\n'
+		  << "Skipping execution! - Increase BLOCK_SIZE and re-build!\n";
+
+	return;
+    }
+
+    if (width > MAX_WIDTH)
+    {
+	std::cout << "Window width " << width
+		  << " exceeds statically configured maximum window width "
+		  << MAX_WIDTH << '\n'
+		  << "Skipping execution! - Increase MAX_WIDTH and re-build!\n";
+	
+	return;
+    }
 
     //
     // register host memory with device
