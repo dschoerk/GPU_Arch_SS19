@@ -1,4 +1,4 @@
-#include "streaming_min_max_cuda_plain_cuda.cuh"
+#include "streaming_min_max_thrust_cuda.cuh"
 
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
