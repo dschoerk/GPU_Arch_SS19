@@ -42,6 +42,7 @@ static std::vector<float> create_white_noise_vector(
 {
     std::vector<float> data(size);
 
+    srand(time(0));
     for (unsigned int k = 0; k < size; ++k)
     {
         data[k] = (1.0 * rand() / (RAND_MAX)) - 0.5;
