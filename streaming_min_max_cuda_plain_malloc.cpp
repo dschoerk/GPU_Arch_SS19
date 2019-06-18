@@ -1,19 +1,19 @@
-#include "streaming_min_max_cuda_plain.h"
-#include "streaming_min_max_cuda_plain_cuda.cuh"
+#include "streaming_min_max_cuda_plain_malloc.h"
+#include "streaming_min_max_cuda_plain_malloc_cuda.cuh"
 
-std::string_view streaming_min_max_cuda_plain::get_name(
+std::string_view streaming_min_max_cuda_plain_malloc::get_name(
     ) const
 {
-    return "cuda plain";
+    return "cuda plain - cuda malloc";
 }
   
-bool streaming_min_max_cuda_plain::check_against_reference(
+bool streaming_min_max_cuda_plain_malloc::check_against_reference(
     ) const
 {
     return true;
 }
 
-void streaming_min_max_cuda_plain::calc(
+void streaming_min_max_cuda_plain_malloc::calc(
     std::vector<float> const & array,
     unsigned int width
     )
@@ -26,7 +26,7 @@ void streaming_min_max_cuda_plain::calc(
     minvalues.clear();
     minvalues.resize(min_max_size);
 
-    streaming_min_max_cuda_plain_calc(
+    streaming_min_max_cuda_plain_malloc_calc(
 	array.data(),
 	minvalues.data(),
 	maxvalues.data(),
@@ -36,13 +36,13 @@ void streaming_min_max_cuda_plain::calc(
     );
 }    
 
-std::vector<float> const & streaming_min_max_cuda_plain::get_max_values(
+std::vector<float> const & streaming_min_max_cuda_plain_malloc::get_max_values(
     ) const
 {
     return maxvalues;
 }
 
-std::vector<float> const & streaming_min_max_cuda_plain::get_min_values(
+std::vector<float> const & streaming_min_max_cuda_plain_malloc::get_min_values(
     ) const
 {
     return minvalues;
