@@ -245,14 +245,16 @@ If the executable was created via a debug build, the following additional option
 
 In the following a sample run of the benchmarking framework is shown:
 
-    [tom@herz GPU_Arch_SS19]$ ./streaming_min_max_comparison -s 10000000 -w 5 -i 10
-	
-    Performing a comparison using the following parameters:
-      window_size = 5
-      sample_size = 10000000
-      number_of_iterations = 10
-    
-    lemire = 18.159 seconds
-    cuda plain = 7.2461 seconds
-    thrust = 0.528345 seconds
-    cuda streams = 0.527815 seconds
+[tom@herz GPU_Arch_SS19]$ ./streaming_min_max_comparison 
+
+	Performing a comparison using the following parameters:
+	  window_size = 500
+	  sample_size = 10000000
+	  number_of_iterations = 1
+
+	  lemire = 2.34238 seconds
+	  cuda plain - cuda malloc = 6.57611 seconds
+	  cuda plain - page locked memory = 3.08447 seconds
+	  cuda plain - page locked shared memory = 0.117122 seconds
+	  thrust = 0.243508 seconds
+	  cuda streams = 0.0663359 seconds
