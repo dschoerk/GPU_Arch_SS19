@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <cooperative_groups.h>
 
+#include <nvToolsExt.h>
+
 #include <stdio.h>
 
 namespace cg = cooperative_groups;
@@ -152,6 +154,7 @@ void streaming_min_max_thrust_calc(
     //thrust::host_vector<float> h_vec(array);
 
     // transfer data to the device
+    nvtxRangePushA("prepare (h2d)");
     thrust::device_vector<float> d_vec(array); // = h_vec;
     thrust::device_vector<float> d_minima(d_vec.size());
     thrust::device_vector<float> d_maxima(d_vec.size());
@@ -198,6 +201,9 @@ void streaming_min_max_thrust_calc(
     thrust::device_vector<float>& output_min = d_minima;
     thrust::device_vector<float>& output_max = d_maxima;
 
+    nvtxRangePop();
+
+    nvtxRangePushA("compute (reduce)");
     for(int d = 0; d < win_size_log2; ++d)
     {
         thrust::for_each(c_begin, c_end,
@@ -219,9 +225,10 @@ void streaming_min_max_thrust_calc(
         input_min = output_min;
         output_min = tmp;*/
     }
+    nvtxRangePop();
 
     // output is in input when finished
-
+    nvtxRangePushA("compute (sum)");
     thrust::for_each(c_begin, c_end,
         SummationStep(
             win_size_log2, 
@@ -232,12 +239,14 @@ void streaming_min_max_thrust_calc(
             output_min.data(), 
             output_max.data()
         ));
+    nvtxRangePop();
 
     // output in output after summation step
 
-
+    nvtxRangePushA("after (d2h)");
     thrust::copy(output_min.begin(), output_min.end() - win_size + 1, minvalues.begin()); // is this efficient?
     thrust::copy(output_max.begin(), output_max.end() - win_size + 1, maxvalues.begin());
+    nvtxRangePop();
 
     /*thrust::host_vector<float> h_minima(minvalues.begin(), minvalues.end());
     thrust::host_vector<float> h_maxima(maxvalues.begin(), maxvalues.end());
