@@ -6,7 +6,11 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 #include <thread>
+
+#include <cuda.h>
+#include <cuda_runtime.h>
 
 #ifdef __linux__ 
     #include <getopt.h>
@@ -130,7 +134,15 @@ static void compare_all_algos(
         nvtxRangeId_t nxtxRange = nvtxRangeStartA(std::string(compare_name).c_str());
 #endif
 
+        // timing with cuda events
+        cudaEvent_t cu_start, cu_stop;
+        cudaEventCreate(&cu_start);
+        cudaEventCreate(&cu_stop);
+
+        cudaEventRecord(cu_start);
         algorithms[i]->calc(data, window_size);
+        cudaEventRecord(cu_stop);
+        cudaEventSynchronize(cu_stop);
 
 #ifdef ENABLE_NVTX
         nvtxRangeEnd(nxtxRange);
@@ -138,7 +150,16 @@ static void compare_all_algos(
         
         auto finish = std::chrono::high_resolution_clock::now();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // just to see a separation between nvtx ranges in the profiler
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(5)); // just to see a separation between nvtx ranges in the profiler
+        
+
+        float milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, cu_start, cu_stop);
+
+        std::cout << milliseconds << std::endl;
+
+        timings[i] = timings[i] + (finish - start); // std::chrono::nanoseconds((int)(milliseconds * 1000));
 
 	//
 	// store results of Lemire's algorithms as a reference for
@@ -182,7 +203,7 @@ static void compare_all_algos(
             );
         }
         
-        timings[i] += (finish - start);
+        
     }
 }
 
@@ -218,11 +239,16 @@ static void timings(
 #endif
 
         compare_all_algos(algorithms, data, timings, window_size);
+
+        if(i == 0) // drop the first timing to get a more accurate average
+        {
+            timings = std::vector<std::chrono::duration<double>>(algorithms.size());
+        }
     }
 
     for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
-	    std::cout << algorithms[i]->get_name() << " = " << timings[i].count() << " seconds\n";
+	    std::cout << algorithms[i]->get_name() << " = " << std::fixed << std::setprecision( 6 ) << timings[i].count() << " seconds\n";
     }
 }
 
