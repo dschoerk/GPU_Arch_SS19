@@ -5,6 +5,7 @@
 #include "streaming_min_max_cuda_plain_page_locked.h"
 #include "streaming_min_max_cuda_plain_page_locked_shared.h"
 #include "streaming_min_max_thrust.h"
+#include "streaming_min_max_thrust_naive.h"
 #include "streaming_min_max_cuda_streams.h"
 
 // ugly hack workaround because C++17 does not allow for brace initialization
@@ -15,6 +16,7 @@ static std::unique_ptr<streaming_min_max_algorithm_interface> algorithms_array[]
     std::make_unique<streaming_min_max_cuda_plain_malloc>(),
     std::make_unique<streaming_min_max_cuda_plain_page_locked>(),
     std::make_unique<streaming_min_max_cuda_plain_page_locked_shared>(),
+    std::make_unique<streaming_min_max_thrust_naive>(),
     std::make_unique<streaming_min_max_thrust>(),
     std::make_unique<streaming_min_max_cuda_streams>()
 };
