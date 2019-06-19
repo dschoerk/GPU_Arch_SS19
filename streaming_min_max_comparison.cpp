@@ -338,7 +338,6 @@ int main(
 	    ) != -1
 	)
     {
-        std::cout << c << std::endl;
 
         switch (c)
         {
