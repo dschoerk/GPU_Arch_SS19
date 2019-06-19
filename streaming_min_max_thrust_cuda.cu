@@ -63,100 +63,88 @@ struct ShiftedWindowMinMaxStep2
 {
     int win_size;
     int data_size;
-    thrust::device_ptr<float> data;
+    int d;
     thrust::device_ptr<float> out_max;
     thrust::device_ptr<float> out_min;
-    thrust::device_ptr<float> tmp_max;
-    thrust::device_ptr<float> tmp_min;
+    thrust::device_ptr<float> in_max;
+    thrust::device_ptr<float> in_min;
 
     int win_size_log2; // next smaller power of 2
     
     ShiftedWindowMinMaxStep2(
-        thrust::device_ptr<float> _data, 
         int _win_size, 
         int _data_size,
-        thrust::device_ptr<float> _tmp_min, 
-        thrust::device_ptr<float> _tmp_max,
+        int _d,
+        thrust::device_ptr<float> _in_min, 
+        thrust::device_ptr<float> _in_max,
         thrust::device_ptr<float> _out_min, 
         thrust::device_ptr<float> _out_max
-    ) : data(_data), win_size(_win_size), out_min(_out_min), out_max(_out_max), tmp_min(_tmp_min), tmp_max(_tmp_max) , data_size(_data_size)
+    ) : win_size(_win_size), out_min(_out_min), out_max(_out_max), in_min(_in_min), in_max(_in_max) , data_size(_data_size), d(_d)
     {
-        for(win_size_log2 = 0; 1 << win_size_log2 <= win_size; ++win_size_log2); // find next smaller power of 2 to win_size
-        win_size_log2--;
-
-        printf("win_size_log2: %d\n", win_size_log2);
-        printf("summation steps: %d\n", win_size - (1 << win_size_log2));
     }
 
     __device__ void operator() (const int &k)
     {
-        //if (k > 250)
-        /*{
-            printf("v: %d %f\n", k, data[k]);
-        }*/
         
-        /*int d = 0;
-        if(k + (1 << d) < data_size)
+        //for(int d = 0; d < win_size_log2; ++d) // naive and incomplete prefix sum
         {
-            tmp_min[k] = fminf(data[k], data[k+1]);
-            tmp_max[k] = fmaxf(data[k], data[k+1]);
-        }*/
-
-
-        auto g = cg::this_grid();
-        
-        for(int d = 0; d < win_size_log2; ++d) // naive and incomplete prefix sum
-        {
+            // pack this into separate kernels
             if(k + (1 << d) < data_size)
-            {  
-                float min_old = tmp_min[k + (1 << d)];
-                float max_old = tmp_max[k + (1 << d)];
-                g.sync();
-                tmp_min[k] = fminf(tmp_min[k], min_old);
-                tmp_max[k] = fmaxf(tmp_max[k], max_old);
-            
-                g.sync();
-                /*out_min[k] = tmp_min[k + flip * data_size];
-                out_max[k] = tmp_max[k + flip * data_size];*/
+            {
+                out_min[k] = fminf(in_min[k], in_min[k + (1 << d)]);
+                out_max[k] = fmaxf(in_max[k], in_max[k + (1 << d)]);
             }
-
-            //g.sync();
-            
-            /*if ( k > 508 && k < 515)
-            {   
-                float p = tmp_min[k];
-                float p_1 = tmp_min[k+1];
-                printf("data %d: %f -- %f\n", k, p, p_1);
-            }*/
-
         }
+    }
+};
 
-        // result in flop
+struct SummationStep
+{
+    int win_size;
+    int data_size;
+    thrust::device_ptr<float> out_max;
+    thrust::device_ptr<float> out_min;
+    thrust::device_ptr<float> in_max;
+    thrust::device_ptr<float> in_min;
 
-       
-        //__syncthreads();
+    int win_size_log2; // next smaller power of 2
+    
+    SummationStep(
+        int _win_size_log2, 
+        int _win_size, 
+        int _data_size,
+        thrust::device_ptr<float> _in_min, 
+        thrust::device_ptr<float> _in_max,
+        thrust::device_ptr<float> _out_min, 
+        thrust::device_ptr<float> _out_max
+    ) : win_size_log2(_win_size_log2), win_size(_win_size), out_min(_out_min), out_max(_out_max), in_min(_in_min), in_max(_in_max) , data_size(_data_size)
+    {
+    }
 
+    __device__ void operator() (const int &k)
+    {
         if(k < data_size) 
         {
-            //out_min[k] = tmp_min[k];
-            //out_max[k] = tmp_max[k];
+            float min = in_min[k];
+            float max = in_max[k];
 
             //__syncthreads();
 
-            /*for(int i = 0; i < win_size - (1 << win_size_log2); ++i) // sum up the rest
+            for(int i = 0; i < win_size - (1 << win_size_log2); ++i) // sum up the rest
             {
-                out_min[k] = fminf(out_min[k], tmp_min[k+i+1]);
-                out_max[k] = fmaxf(out_max[k], tmp_max[k+i+1]);
+                min = fminf(min, in_min[k+i+1]);
+                max = fmaxf(max, in_max[k+i+1]);
+            }
 
-                g.sync();
-            }*/
+            out_min[k] = min;
+            out_max[k] = max;
         }
     }
 };
 
 void streaming_min_max_thrust_calc(
     std::vector<float> const & array,
-    unsigned int width,
+    unsigned int win_size,
     std::vector<float> & minvalues,
     std::vector<float> & maxvalues
 )
@@ -168,11 +156,11 @@ void streaming_min_max_thrust_calc(
     thrust::device_vector<float> d_minima(d_vec.size());
     thrust::device_vector<float> d_maxima(d_vec.size());
 
-    thrust::device_vector<float> d_tmp_minima(d_vec.size(), 0); //(array);
-    thrust::device_vector<float> d_tmp_maxima(d_vec.size(), 0); //(array);
+    thrust::device_vector<float> d_in_minima(d_vec.size(), 0); //(array);
+    thrust::device_vector<float> d_in_maxima(d_vec.size(), 0); //(array);
 
-    thrust::copy(d_vec.begin(), d_vec.end(), d_tmp_minima.begin());
-    thrust::copy(d_vec.begin(), d_vec.end(), d_tmp_maxima.begin());
+    thrust::copy(d_vec.begin(), d_vec.end(), d_in_minima.begin());
+    thrust::copy(d_vec.begin(), d_vec.end(), d_in_maxima.begin());
     
 
     
@@ -198,31 +186,58 @@ void streaming_min_max_thrust_calc(
     //thrust::counting_iterator<int> c_end(d_vec.size() - width + 1); // inclusive end?
     thrust::counting_iterator<int> c_end(d_vec.size());
 
+    int win_size_log2;
+    for(win_size_log2 = 0; 1 << win_size_log2 <= win_size; ++win_size_log2); // find next smaller power of 2 to win_size
+    win_size_log2--;
+
     //for all shifts
+
+    thrust::device_vector<float>& input_min = d_in_minima;
+    thrust::device_vector<float>& input_max = d_in_maxima;
+    
+    thrust::device_vector<float>& output_min = d_minima;
+    thrust::device_vector<float>& output_max = d_maxima;
+
+    for(int d = 0; d < win_size_log2; ++d)
+    {
+        thrust::for_each(c_begin, c_end,
+            ShiftedWindowMinMaxStep2(
+                win_size, 
+                array.size(),
+                d,
+                input_min.data(), 
+                input_max.data(),
+                output_min.data(), 
+                output_max.data()
+            ));
+        
+
+        std::swap(input_min, output_min);
+        std::swap(input_max, output_max);
+    
+        /*thrust::device_ptr<float> tmp = input_min;
+        input_min = output_min;
+        output_min = tmp;*/
+    }
+
+    // output is in input when finished
+
     thrust::for_each(c_begin, c_end,
-        ShiftedWindowMinMaxStep2(
-            d_vec.data(), 
-            width, 
+        SummationStep(
+            win_size_log2, 
+            win_size,
             array.size(),
-            d_tmp_minima.data(), 
-            d_tmp_maxima.data(),
-            d_minima.data(), 
-            d_maxima.data()
+            input_min.data(), 
+            input_max.data(),
+            output_min.data(), 
+            output_max.data()
         ));
 
-    /*thrust::for_each(c_begin, c_end,
-        SummationFunctor(
-            d_vec.data(), 
-            width, 
-            array.size(),
-            d_tmp_minima.data(), 
-            d_tmp_maxima.data(),
-            d_minima.data(), 
-            d_maxima.data()
-        ));*/
+    // output in output after summation step
 
-    thrust::copy(d_tmp_minima.begin(), d_tmp_minima.end() - width + 1, minvalues.begin()); // is this efficient?
-    thrust::copy(d_tmp_maxima.begin(), d_tmp_maxima.end() - width + 1, maxvalues.begin());
+
+    thrust::copy(output_min.begin(), output_min.end() - win_size + 1, minvalues.begin()); // is this efficient?
+    thrust::copy(output_max.begin(), output_max.end() - win_size + 1, maxvalues.begin());
 
     /*thrust::host_vector<float> h_minima(minvalues.begin(), minvalues.end());
     thrust::host_vector<float> h_maxima(maxvalues.begin(), maxvalues.end());
@@ -231,10 +246,7 @@ void streaming_min_max_thrust_calc(
     h_maxima = d_maxima;*/
 
 
-    /*for(int i=250; i < 260; i++)
-        std::cout << i << ": " << array[i] << ", ";
-
-    for(float f : thrust::host_vector<float>(d_vec))
+    /*for(float f : thrust::host_vector<float>(d_vec))
         std::cout << f << ", ";
     std::cout << std::endl << std::endl;
 
