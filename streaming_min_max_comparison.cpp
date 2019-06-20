@@ -248,7 +248,7 @@ static void timings(
 
     for (unsigned int i = 0; i < algorithms.size(); ++i)
     {
-	    std::cout << algorithms[i]->get_name() << " = " << std::fixed << std::setprecision( 6 ) << timings[i].count() << " seconds\n";
+	    std::cout << algorithms[i]->get_name() << " = " << std::fixed << std::setprecision( 6 ) << (timings[i].count() / (float)(number_of_iterations - 1)) << " seconds\n";
     }
 }
 
