@@ -1,5 +1,7 @@
 #include "streaming_min_max_thrust_cuda.cuh"
 
+#include "utils.h"
+
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <thrust/generate.h>
@@ -154,7 +156,7 @@ void streaming_min_max_thrust_calc(
     //thrust::host_vector<float> h_vec(array);
 
     // transfer data to the device
-    nvtxRangePushA("prepare (h2d)");
+PUSH_RANGE("h2d", 1)
     thrust::device_vector<float> d_vec(array); // = h_vec;
     thrust::device_vector<float> d_minima(d_vec.size());
     thrust::device_vector<float> d_maxima(d_vec.size());
@@ -201,9 +203,9 @@ void streaming_min_max_thrust_calc(
     thrust::device_vector<float>& output_min = d_minima;
     thrust::device_vector<float>& output_max = d_maxima;
 
-    nvtxRangePop();
+POP_RANGE
 
-    nvtxRangePushA("compute (reduce)");
+PUSH_RANGE("kernel", 2)
     for(int d = 0; d < win_size_log2; ++d)
     {
         thrust::for_each(c_begin, c_end,
@@ -225,10 +227,10 @@ void streaming_min_max_thrust_calc(
         input_min = output_min;
         output_min = tmp;*/
     }
-    nvtxRangePop();
+POP_RANGE
 
     // output is in input when finished
-    nvtxRangePushA("compute (sum)");
+PUSH_RANGE("kernel", 4)
     thrust::for_each(c_begin, c_end,
         SummationStep(
             win_size_log2, 
@@ -239,14 +241,17 @@ void streaming_min_max_thrust_calc(
             output_min.data(), 
             output_max.data()
         ));
-    nvtxRangePop();
+cudaDeviceSynchronize();
+POP_RANGE
+
+
 
     // output in output after summation step
 
-    nvtxRangePushA("after (d2h)");
+PUSH_RANGE("d2h", 3)
     thrust::copy(output_min.begin(), output_min.end() - win_size + 1, minvalues.begin()); // is this efficient?
     thrust::copy(output_max.begin(), output_max.end() - win_size + 1, maxvalues.begin());
-    nvtxRangePop();
+POP_RANGE
 
     /*thrust::host_vector<float> h_minima(minvalues.begin(), minvalues.end());
     thrust::host_vector<float> h_maxima(maxvalues.begin(), maxvalues.end());

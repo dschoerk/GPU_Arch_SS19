@@ -89,7 +89,7 @@ void streaming_min_max_cuda_plain_malloc_calc(
     unsigned int width
     )
 {
-	nvtxRangePushA("prepare (h2d)");
+PUSH_RANGE("h2d", 1)
     unsigned int const min_max_size = min_max_elements * sizeof(float);
     unsigned int const array_size = array_elements * sizeof(float);
     unsigned int const total_mem_size(array_size + 2 * min_max_size);
@@ -197,9 +197,9 @@ void streaming_min_max_cuda_plain_malloc_calc(
 	threadsPerBlock
 	);   
 
-	nvtxRangePop();
+POP_RANGE
 
-	nvtxRangePushA("compute");
+PUSH_RANGE("kernel", 2)
     streaming_min_max_cuda_plain_malloc_calc<<<blocksPerGrid, threadsPerBlock>>>(
 	d_array,
 	d_min,
@@ -207,10 +207,11 @@ void streaming_min_max_cuda_plain_malloc_calc(
 	min_max_elements,
 	width
 	);    
-	nvtxRangePop();
 
-	nvtxRangePushA("prepare (h2d)");
-    err = cudaGetLastError();
+cudaDeviceSynchronize();
+POP_RANGE
+
+PUSH_RANGE("d2h", 3)
 
     if (err != cudaSuccess)
     {
@@ -268,5 +269,5 @@ void streaming_min_max_cuda_plain_malloc_calc(
 
 	streaming_min_max_cuda_plain_clean_up();
 	
-	nvtxRangePop();
+POP_RANGE
 }

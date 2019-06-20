@@ -199,6 +199,7 @@ void streaming_min_max_cuda_plain_page_locked_calc(
     unsigned int width
     )
 {
+PUSH_RANGE("h2d", 1)
     unsigned int const min_max_size(min_max_elements * sizeof(float));
     unsigned int const array_size(array_elements * sizeof(float));
     cudaError_t err(cudaSuccess);
@@ -270,6 +271,9 @@ void streaming_min_max_cuda_plain_page_locked_calc(
 	threadsPerBlock
 	);   
 
+POP_RANGE
+PUSH_RANGE("kernel", 2)
+
     streaming_min_max_cuda_plain_page_locked_calc<<<blocksPerGrid, threadsPerBlock>>>(
 	d_array,
 	d_min,
@@ -277,7 +281,12 @@ void streaming_min_max_cuda_plain_page_locked_calc(
 	min_max_elements,
 	width
 	);    
-    err = cudaGetLastError();
+	err = cudaGetLastError();
+	
+cudaDeviceSynchronize();
+POP_RANGE
+
+PUSH_RANGE("d2h", 3)
 
     if (err != cudaSuccess)
     {
@@ -305,5 +314,6 @@ void streaming_min_max_cuda_plain_page_locked_calc(
 	    );
     }
 
-    streaming_min_max_cuda_plain_clean_up();
+	streaming_min_max_cuda_plain_clean_up();
+POP_RANGE
 }

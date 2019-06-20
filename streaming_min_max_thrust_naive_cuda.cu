@@ -15,6 +15,8 @@
 
 #include <nvToolsExt.h>
 
+#include "utils.h"
+
 #include <stdio.h>
 
 namespace cg = cooperative_groups;
@@ -76,7 +78,7 @@ void streaming_min_max_thrust_naive_calc(
     std::vector<float> & maxvalues
 )
 {
-    nvtxRangePushA("prepare (h2d)");
+PUSH_RANGE("h2d", 1)
     //thrust::host_vector<float> h_vec(array);
 
     // transfer data to the device
@@ -106,9 +108,9 @@ void streaming_min_max_thrust_naive_calc(
 
     thrust::counting_iterator<int> c_begin(0);
     thrust::counting_iterator<int> c_end(d_vec.size() - win_size + 1); 
-    nvtxRangePop();
+POP_RANGE
 
-    nvtxRangePushA("compute");
+PUSH_RANGE("kernel", 2)
     thrust::for_each(c_begin, c_end,
         ShiftedWindowMinMaxStep(
             d_vec.data(),
@@ -116,12 +118,13 @@ void streaming_min_max_thrust_naive_calc(
             d_minima.data(), 
             d_maxima.data()
         ));
-    nvtxRangePop();
-    
-    nvtxRangePushA("after (d2h)");
+cudaDeviceSynchronize();
+POP_RANGE
+
+PUSH_RANGE("d2h", 3)
     thrust::copy(d_minima.begin(), d_minima.end(), minvalues.begin()); // is this efficient?
     thrust::copy(d_maxima.begin(), d_maxima.end(), maxvalues.begin());
-    nvtxRangePop();
+POP_RANGE
 
     /*thrust::host_vector<float> h_minima(minvalues.begin(), minvalues.end());
     thrust::host_vector<float> h_maxima(maxvalues.begin(), maxvalues.end());
