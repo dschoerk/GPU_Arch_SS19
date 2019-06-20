@@ -158,7 +158,7 @@ static void compare_all_algos(
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, cu_start, cu_stop);
 
-        std::cout << milliseconds << std::endl;
+        //std::cout << milliseconds << std::endl;
 
         timings[i] = timings[i] + (finish - start); // 
         //timings[i] = timings[i] + std::chrono::nanoseconds((int)(milliseconds * 1000));

@@ -15,12 +15,12 @@ static std::unique_ptr<streaming_min_max_algorithm_interface> algorithms_array[]
 {
     std::make_unique<streaming_min_max_lemire>(),
     std::make_unique<streaming_min_max_cuda_plain_malloc>(),
-    std::make_unique<streaming_min_max_cuda_plain_tiled>(),
     std::make_unique<streaming_min_max_cuda_plain_page_locked>(),
     std::make_unique<streaming_min_max_cuda_plain_page_locked_shared>(),
     std::make_unique<streaming_min_max_thrust_naive>(),
     std::make_unique<streaming_min_max_thrust>(),
-    std::make_unique<streaming_min_max_cuda_streams>()
+    std::make_unique<streaming_min_max_cuda_plain_tiled>()
+    //std::make_unique<streaming_min_max_cuda_streams>()
 };
 
 std::vector<std::unique_ptr<streaming_min_max_algorithm_interface> > algorithms

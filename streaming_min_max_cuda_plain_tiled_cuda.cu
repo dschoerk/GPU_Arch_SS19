@@ -10,23 +10,160 @@
 
 #include <nvToolsExt.h>
 
-#include <cooperative_groups.h>
 
 #define BLOCK_SIZE 1024
 
-namespace cg = cooperative_groups;
+
+static float *d_array_tiled(nullptr);
+static float *d_min_tiled(nullptr);
+static float *d_max_tiled(nullptr);
+
+static float const *gh_array_tiled(nullptr);
+static float *gh_min_tiled(nullptr);
+static float *gh_max_tiled(nullptr);
+
+static void streaming_min_max_cuda_plain_clean_up(
+)
+{
+	cudaError_t err(cudaSuccess);
+
+	if (d_array_tiled != nullptr)
+	{
+		TRACE(
+			"Unregistering host memory at 0x%lx ...\n",
+			(unsigned long) gh_array_tiled
+			);
+
+		err = cudaHostUnregister((void *) gh_array_tiled);
+
+		if (err != cudaSuccess)
+		{
+			ERROR_EXIT(
+			"Failed to unregister memory at 0x%lx - %s",
+			(unsigned long) gh_array_tiled,
+			cudaGetErrorString(err)
+			);
+		}
+	}
+
+	d_array_tiled = nullptr;
+
+	if (d_min_tiled != nullptr)
+	{
+		TRACE(
+			"Unregistering host memory at 0x%lx ...\n",
+			(unsigned long) gh_min_tiled
+			);
+
+		err = cudaHostUnregister(gh_min_tiled);
+
+		if (err != cudaSuccess)
+		{
+			ERROR_EXIT(
+			"Failed to unregister memory at 0x%lx - %s",
+			(unsigned long) gh_min_tiled,
+			cudaGetErrorString(err)
+			);
+		}
+	}
+
+	d_min_tiled = nullptr;
+
+	if (d_max_tiled != nullptr)
+	{
+		TRACE(
+			"Unregistering host memory at 0x%lx ...\n",
+			(unsigned long) gh_max_tiled
+			);
+
+		err = cudaHostUnregister(gh_max_tiled);
+
+		if (err != cudaSuccess)
+		{
+			ERROR_EXIT(
+			"Failed to unregister memory at 0x%lx - %s",
+			(unsigned long) gh_max_tiled,
+			cudaGetErrorString(err)
+			);
+		}
+	}
+
+	d_max_tiled = nullptr;
+}
+
+static void register_host_memory(
+    float const * h_mem,
+    float * &d_mem,
+    unsigned int size
+    )
+{
+    cudaError_t err(cudaSuccess);
+
+    TRACE(
+	"Registering %u bytes of host memory at 0x%lx for use by CUDA ...\n",
+	size,
+	(unsigned long) h_mem
+	);
+
+    err = cudaHostRegister((void *) h_mem, size, cudaHostRegisterMapped);
+    
+    if (err != cudaSuccess)
+    {
+		streaming_min_max_cuda_plain_clean_up();
+
+        ERROR_EXIT(
+	    "Failed to register %u bytes of host memory at 0x%lx for use with CUDA - %s",
+	    size,
+	    (unsigned long) h_mem,
+	    cudaGetErrorString(err)
+	    );
+    }
+
+    TRACE(
+	"Successfully registered %u bytes of host memory at 0x%lx for use with CUDA ...\n",
+	size,
+	(unsigned long) h_mem
+	);
+
+    TRACE(
+	"Obtaining device pointer for %u bytes of host memory at 0x%lx  ...\n",
+	size,
+	(unsigned long) h_mem
+	);
+
+    err = cudaHostGetDevicePointer(&d_mem, (void *) h_mem, 0);
+
+    if (err != cudaSuccess)
+    {
+		streaming_min_max_cuda_plain_clean_up();
+
+        ERROR_EXIT(
+	    "Failed to obtain device pointer for %u bytes of host memory at 0x%lx - %s",
+	    size,
+  	    (unsigned long) h_mem,
+	    cudaGetErrorString(err)
+	    );
+    }
+
+    TRACE(
+	"Successfully obtained device pointer 0x%lx for %u bytes of host memory at 0x%lx ...\n",
+	(unsigned long) d_mem,
+	size,
+	 (unsigned long) h_mem
+	);
+}
 
 /**
  * CUDA kernel device code
  *
  * Computes a streaming minimum and maximum of the values of array \a
- * d_array within a window of size \a width and stores these these
- * minima and maxima in \a d_min and \a d_max respectively.
+ * d_array_tiled within a window of size \a width and stores these these
+ * minima and maxima in \a d_min_tiled and \a d_max_tile respectively.
  */
 __global__ void streaming_min_max_cuda_plain_tiled_calc(
-    float const * d_array,
-    float * d_min,
-	float * d_max,
+    float const * d_array_tiled,
+    float * d_min_tiled,
+	float * d_max_tiled,
 	const unsigned int array_elements,
     unsigned int min_max_elements,
 	unsigned int win_size,
@@ -59,7 +196,7 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 
 	if( k + BLOCK_IDX * OUT_BLOCK_SIZE < array_elements )
 	{
-		float read = d_array[k + BLOCK_IDX * OUT_BLOCK_SIZE];
+		float read = d_array_tiled[k + BLOCK_IDX * OUT_BLOCK_SIZE];
 		s_min[k] = read;
 		s_max[k] = read;
 	}
@@ -113,41 +250,17 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 
 		//printf("out: %d blk: %d k: %d min: %f max: %f\n", OUT_BLOCK_SIZE * BLOCK_IDX + k, BLOCK_IDX, k, min, max);
 
-		d_min[OUT_BLOCK_SIZE * BLOCK_IDX + k] = min;
-		d_max[OUT_BLOCK_SIZE * BLOCK_IDX + k] = max;
+		d_min_tiled[OUT_BLOCK_SIZE * BLOCK_IDX + k] = min;
+		d_max_tiled[OUT_BLOCK_SIZE * BLOCK_IDX + k] = max;
 	}
 	
 }
 
 
-float * d_mem_tiled(NULL);
+// float * d_mem_tiled(NULL);
 
-static void streaming_min_max_cuda_plain_clean_up(
-    )
-{
-    cudaError_t err(cudaSuccess);
 
-    if (d_mem_tiled != NULL)
-    {
-	TRACE(
-	    "Freeing allocated device memory at 0x%lx ...\n",
-	    (unsigned long) d_mem_tiled
-	    );
 
-	err = cudaFree(d_mem_tiled);
-
-	if (err != cudaSuccess)
-	{
-	    ERROR_EXIT(
-		"Failed to free allocated device memory at 0x%lx - %s",
-		(unsigned long) d_mem_tiled,
-		cudaGetErrorString(err)
-		);
-	}
-    }
-
-    d_mem_tiled = NULL;
-}
 
 void streaming_min_max_cuda_plain_tiled_calc(
     float const * h_array,
@@ -214,61 +327,34 @@ PUSH_RANGE("h2d", 1)
     // allocate device memory
     //
 
-    TRACE(
-	"Allocating %u bytes of device memory ...\n",
-	total_mem_size
+    register_host_memory(
+	h_array,
+	d_array_tiled,
+	array_size
 	);
-
-    err = cudaMalloc((void **) &d_mem_tiled, total_mem_size);
-
-    if (err != cudaSuccess)
-    {
-		streaming_min_max_cuda_plain_clean_up();
-
-        ERROR_EXIT(
-	    "Failed to allocate %u bytes of memory on device - %s",
-	    total_mem_size,
-	    cudaGetErrorString(err)
-	    );
-    }
-
-    TRACE(
-	"Successfully allocated %u bytes of device memory at 0x%lx ...\n",
-	total_mem_size,
-	(unsigned long) d_mem_tiled
+	gh_array_tiled = h_array;
+	
+	register_host_memory(
+	h_min,
+	d_min_tiled,
+	min_max_size
 	);
+	gh_min_tiled = h_min;
+
+	register_host_memory(
+	h_max,
+	d_max_tiled,
+	min_max_size
+	);
+	gh_max_tiled = h_max;
 
     //
     // initialize pointers to subregions
     //
 
-    float *d_array(d_mem_tiled);
-    float *d_min(d_mem_tiled + array_elements);
-    float *d_max(d_min + min_max_elements);
-
-    //
-    // copy input vector's data to device memory
-    //
-
-    TRACE(
-	"Copying %u bytes of input data from vector 0x%lx into device memory 0x%lx ...\n",
-	array_size,
-	(unsigned long) h_array,
-	(unsigned long) d_array
-	);
-
-    err = cudaMemcpy(d_array, h_array, array_size, cudaMemcpyHostToDevice);
-
-    if (err != cudaSuccess)
-    {
-	streaming_min_max_cuda_plain_clean_up();
-	
-        ERROR_EXIT(
-	    "Failed to copy %u bytes of input vector to device memory - %s",
-	    array_size,
-	    cudaGetErrorString(err)
-	    );
-    }
+    /*float *d_array_tiled(d_mem_tiled);
+    float *d_min_tiled(d_mem_tiled + array_elements);
+	float *d_max_tile(d_min_tiled + min_max_elements);*/
 
     //
     // launch the CUDA kernel
@@ -287,9 +373,9 @@ POP_RANGE
 PUSH_RANGE("kernel", 2)
 
     streaming_min_max_cuda_plain_tiled_calc<<<blocksPerGrid, threadsPerBlock>>>(
-	d_array,
-	d_min,
-	d_max,
+	d_array_tiled,
+	d_min_tiled,
+	d_max_tiled,
 	array_elements,
 	min_max_elements,
 	width,
@@ -312,54 +398,7 @@ PUSH_RANGE("d2h", 3)
 	    );
     }
 
-    //
-    // copy output data from device memory into vectors
-    //
-
-	TRACE("check1\n");
-    TRACE(
-	"Copying %u bytes of output data from device memory 0x%lx into vector 0x%lx ...\n",
-	min_max_size,
-	(unsigned long) d_min,
-	(unsigned long) h_min
-	);
-
-	TRACE("cudaMemcpy %d\n", min_max_size);
-	err = cudaMemcpy(h_min, d_min, min_max_size, cudaMemcpyDeviceToHost);
-	TRACE("check2\n");
-
-    if (err != cudaSuccess)
-    {
-		streaming_min_max_cuda_plain_clean_up();
-	
-        ERROR_EXIT(
-	    "Failed to copy %u bytes to input vector from device memory - %s",
-	    min_max_size,
-	    cudaGetErrorString(err)
-	    );
-	}
-	
-	TRACE("check3");
-
-    TRACE(
-	"Copying %u bytes of output data from device memory 0x%lx into vector 0x%lx ...\n",
-	min_max_size,
-	(unsigned long) d_max,
-	(unsigned long) h_max
-	);
-
-    err = cudaMemcpy(h_max, d_max, min_max_size, cudaMemcpyDeviceToHost);
-
-    if (err != cudaSuccess)
-    {
-	streaming_min_max_cuda_plain_clean_up();
-	
-        ERROR_EXIT(
-	    "Failed to copy %u bytes to input vector from device memory - %s",
-	    min_max_size,
-	    cudaGetErrorString(err)
-	    );
-    }
+    
 
 	streaming_min_max_cuda_plain_clean_up();
 	
