@@ -2,6 +2,7 @@
 
 #include "streaming_min_max_lemire.h"
 #include "streaming_min_max_cuda_plain_malloc.h"
+#include "streaming_min_max_cuda_plain_tiled.h"
 #include "streaming_min_max_cuda_plain_page_locked.h"
 #include "streaming_min_max_cuda_plain_page_locked_shared.h"
 #include "streaming_min_max_thrust.h"
@@ -14,6 +15,7 @@ static std::unique_ptr<streaming_min_max_algorithm_interface> algorithms_array[]
 {
     std::make_unique<streaming_min_max_lemire>(),
     std::make_unique<streaming_min_max_cuda_plain_malloc>(),
+    std::make_unique<streaming_min_max_cuda_plain_tiled>(),
     std::make_unique<streaming_min_max_cuda_plain_page_locked>(),
     std::make_unique<streaming_min_max_cuda_plain_page_locked_shared>(),
     std::make_unique<streaming_min_max_thrust_naive>(),
