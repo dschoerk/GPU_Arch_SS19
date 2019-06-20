@@ -139,9 +139,10 @@ static void compare_all_algos(
         cudaEventCreate(&cu_start);
         cudaEventCreate(&cu_stop);
 
-        cudaEventRecord(cu_start);
+        cudaEventRecord(cu_start, 0);
         algorithms[i]->calc(data, window_size);
-        cudaEventRecord(cu_stop);
+        cudaThreadSynchronize();
+        cudaEventRecord(cu_stop, 0);
         cudaEventSynchronize(cu_stop);
 
 #ifdef ENABLE_NVTX
@@ -157,9 +158,10 @@ static void compare_all_algos(
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, cu_start, cu_stop);
 
-        //std::cout << milliseconds << std::endl;
+        std::cout << milliseconds << std::endl;
 
-        timings[i] = timings[i] + (finish - start); // std::chrono::nanoseconds((int)(milliseconds * 1000));
+        timings[i] = timings[i] + (finish - start); // 
+        //timings[i] = timings[i] + std::chrono::nanoseconds((int)(milliseconds * 1000));
 
 	//
 	// store results of Lemire's algorithms as a reference for
