@@ -36,12 +36,11 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 
 
 	// tiling by blocks
-	unsigned int tile = blockIdx.x;
-	unsigned int tile_offset = blockDim.x * blockIdx.x;
+	// unsigned int tile = blockIdx.x;
+	// unsigned int tile_offset = blockDim.x * blockIdx.x;
 
 	const int BLOCK_IDX = blockIdx.x; 
 	const int OUT_BLOCK_SIZE = BLOCK_SIZE - win_size + 1; // the number of results a block can compute
-
 	const int k = threadIdx.x;
 
 	//if(tile_offset == 0 && k == 0)
@@ -60,8 +59,9 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 
 	if( k + BLOCK_IDX * OUT_BLOCK_SIZE < array_elements )
 	{
-		s_min[k] = d_array[k + BLOCK_IDX * OUT_BLOCK_SIZE];
-		s_max[k] = d_array[k + BLOCK_IDX * OUT_BLOCK_SIZE];
+		float read = d_array[k + BLOCK_IDX * OUT_BLOCK_SIZE];
+		s_min[k] = read;
+		s_max[k] = read;
 	}
 
 	__syncthreads();
@@ -158,7 +158,8 @@ void streaming_min_max_cuda_plain_tiled_calc(
     unsigned int width
     )
 {
-	nvtxRangePushA("prepare (h2d)");
+PUSH_RANGE("h2d", 1)
+	
     unsigned int const min_max_size = min_max_elements * sizeof(float);
     unsigned int const array_size = array_elements * sizeof(float);
     unsigned int const total_mem_size(array_size + 2 * min_max_size);
@@ -281,9 +282,10 @@ void streaming_min_max_cuda_plain_tiled_calc(
 
 	
 
-	nvtxRangePop();
+POP_RANGE
 
-	nvtxRangePushA("compute");
+PUSH_RANGE("kernel", 2)
+
     streaming_min_max_cuda_plain_tiled_calc<<<blocksPerGrid, threadsPerBlock>>>(
 	d_array,
 	d_min,
@@ -292,10 +294,12 @@ void streaming_min_max_cuda_plain_tiled_calc(
 	min_max_elements,
 	width,
 	win_size_log2
-	);    
-	nvtxRangePop();
+	);   
 
-	nvtxRangePushA("prepare (h2d)");
+cudaDeviceSynchronize();
+POP_RANGE
+
+PUSH_RANGE("d2h", 3)
     err = cudaGetLastError();
 
     if (err != cudaSuccess)
@@ -359,5 +363,5 @@ void streaming_min_max_cuda_plain_tiled_calc(
 
 	streaming_min_max_cuda_plain_clean_up();
 	
-	nvtxRangePop();
+POP_RANGE
 }
