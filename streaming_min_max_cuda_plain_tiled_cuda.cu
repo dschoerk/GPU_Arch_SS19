@@ -33,13 +33,23 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 	unsigned int win_size_log2
     )  
 {
+
+
 	// tiling by blocks
 	unsigned int tile = blockIdx.x;
 	unsigned int tile_offset = blockDim.x * blockIdx.x;
 
-	//int const thread_index(blockDim.x * blockIdx.x + threadIdx.x);
+	const int BLOCK_IDX = blockIdx.x; 
+	const int OUT_BLOCK_SIZE = BLOCK_SIZE - win_size + 1; // the number of results a block can compute
 
 	const int k = threadIdx.x;
+
+	//if(tile_offset == 0 && k == 0)
+	//	printf("OUT_BLOCK_SIZE: %d BLOCK_SIZE: %d win_size: %d 2^win_size_log2: %d\n", OUT_BLOCK_SIZE, BLOCK_SIZE, win_size, (1<<win_size_log2));
+
+	
+	//if(BLOCK_IDX > 0)
+	//	return;
 
 	if(k >= array_elements)
 		return;
@@ -48,16 +58,10 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 	__shared__ float s_max[BLOCK_SIZE];
 
 
-	if( k < array_elements )
+	if( k + BLOCK_IDX * OUT_BLOCK_SIZE < array_elements )
 	{
-		/*d_min[k] = d_array[k];
-		d_max[k] = d_array[k];*/
-		
-		s_min[k] = d_array[k];
-		s_max[k] = d_array[k];
-		
-
-		//printf("%d = %f\n", k, d_min[k]);
+		s_min[k] = d_array[k + BLOCK_IDX * OUT_BLOCK_SIZE];
+		s_max[k] = d_array[k + BLOCK_IDX * OUT_BLOCK_SIZE];
 	}
 
 	__syncthreads();
@@ -67,7 +71,7 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 		// pack this into separate kernels
 		float min1, min2, max1, max2;
 		
-		if(k + (1 << d) < array_elements)
+		if(k + (1 << d) < BLOCK_SIZE)
 		{
 			min1 = s_min[k];
 			min2 = s_min[k + (1 << d)];
@@ -77,7 +81,7 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 			
 		__syncthreads();
 		
-		if(k + (1 << d) < array_elements)
+		if(k + (1 << d) < BLOCK_SIZE)
 		{
 			if(min2 < min1)
 				s_min[k] = min2;
@@ -91,18 +95,8 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 		__syncthreads();
 	}
 
-
-	/*return;
-
-	if(k == 0)
-	{
-		printf("win_size: %d (1 << win_size_log2): %d\n", win_size, (1 << win_size_log2));
-	}*/
-
-	// for non power of 2's
-	//if(k < array_elements) 
-
-	if(k < array_elements - win_size + 1)
+	if(OUT_BLOCK_SIZE * BLOCK_IDX + k < array_elements - win_size + 1 && k < OUT_BLOCK_SIZE)
+	//if( k < )
 	{
 		float min = s_min[k];
 		float max = s_max[k];
@@ -117,37 +111,12 @@ __global__ void streaming_min_max_cuda_plain_tiled_calc(
 			__syncthreads();
 		}
 
-		d_min[k] = min;
-		d_max[k] = max;
+		//printf("out: %d blk: %d k: %d min: %f max: %f\n", OUT_BLOCK_SIZE * BLOCK_IDX + k, BLOCK_IDX, k, min, max);
+
+		d_min[OUT_BLOCK_SIZE * BLOCK_IDX + k] = min;
+		d_max[OUT_BLOCK_SIZE * BLOCK_IDX + k] = max;
 	}
 	
-
-
-    /*float min, max;
-
-    if (thread_index < min_max_elements)
-    {
-		min = d_array[thread_index];
-		max = d_array[thread_index];
-		
-		for (int i = 1; i < width; ++i)
-		{
-			float current = d_array[thread_index + i];
-			
-			if (current < min)
-			{
-				min = current;
-			}
-
-			if (current > max)
-			{
-				max = current;
-			}
-		}
-
-		d_min[thread_index] = min;
-		d_max[thread_index] = max;
-    }*/
 }
 
 
@@ -192,7 +161,7 @@ void streaming_min_max_cuda_plain_tiled_calc(
 	nvtxRangePushA("prepare (h2d)");
     unsigned int const min_max_size = min_max_elements * sizeof(float);
     unsigned int const array_size = array_elements * sizeof(float);
-    unsigned int const total_mem_size(array_size + 2 * array_size);
+    unsigned int const total_mem_size(array_size + 2 * min_max_size);
     cudaError_t err(cudaSuccess);    
     int dev_count(0);
     cudaDeviceProp dev_prop;
@@ -228,8 +197,17 @@ void streaming_min_max_cuda_plain_tiled_calc(
 	(dev_prop.canMapHostMemory == 0) ? "no": "yes"
 	);   
 
-    int const threadsPerBlock(dev_prop.maxThreadsPerBlock);
-	int const blocksPerGrid((array_elements + threadsPerBlock - 1) / threadsPerBlock);
+	int win_size_log2;
+    for(win_size_log2 = 0; 1 << win_size_log2 <= width; ++win_size_log2); // find next smaller power of 2 to win_size
+	win_size_log2--;
+	
+
+	const int OUT_BLOCK_SIZE = BLOCK_SIZE - width + 1;
+	int const threadsPerBlock = BLOCK_SIZE; //dev_prop.maxThreadsPerBlock);
+	
+	const int output_blocks = min_max_elements / OUT_BLOCK_SIZE + OUT_BLOCK_SIZE;
+
+	int const blocksPerGrid = output_blocks;//(((output_blocks * threadsPerBlock) + threadsPerBlock - 1) / threadsPerBlock);
 	
     //
     // allocate device memory
@@ -244,7 +222,7 @@ void streaming_min_max_cuda_plain_tiled_calc(
 
     if (err != cudaSuccess)
     {
-	streaming_min_max_cuda_plain_clean_up();
+		streaming_min_max_cuda_plain_clean_up();
 
         ERROR_EXIT(
 	    "Failed to allocate %u bytes of memory on device - %s",
@@ -265,7 +243,7 @@ void streaming_min_max_cuda_plain_tiled_calc(
 
     float *d_array(d_mem_tiled);
     float *d_min(d_mem_tiled + array_elements);
-    float *d_max(d_min + array_elements);
+    float *d_max(d_min + min_max_elements);
 
     //
     // copy input vector's data to device memory
@@ -301,9 +279,7 @@ void streaming_min_max_cuda_plain_tiled_calc(
 	threadsPerBlock
 	);   
 
-	int win_size_log2;
-    for(win_size_log2 = 0; 1 << win_size_log2 <= width; ++win_size_log2); // find next smaller power of 2 to win_size
-    win_size_log2--;
+	
 
 	nvtxRangePop();
 
@@ -336,6 +312,7 @@ void streaming_min_max_cuda_plain_tiled_calc(
     // copy output data from device memory into vectors
     //
 
+	TRACE("check1\n");
     TRACE(
 	"Copying %u bytes of output data from device memory 0x%lx into vector 0x%lx ...\n",
 	min_max_size,
@@ -343,18 +320,22 @@ void streaming_min_max_cuda_plain_tiled_calc(
 	(unsigned long) h_min
 	);
 
-    err = cudaMemcpy(h_min, d_min, min_max_size, cudaMemcpyDeviceToHost);
+	TRACE("cudaMemcpy %d\n", min_max_size);
+	err = cudaMemcpy(h_min, d_min, min_max_size, cudaMemcpyDeviceToHost);
+	TRACE("check2\n");
 
     if (err != cudaSuccess)
     {
-	streaming_min_max_cuda_plain_clean_up();
+		streaming_min_max_cuda_plain_clean_up();
 	
         ERROR_EXIT(
-	    "Failed to copy %u bytes of input vector to device memory - %s",
+	    "Failed to copy %u bytes to input vector from device memory - %s",
 	    min_max_size,
 	    cudaGetErrorString(err)
 	    );
-    }
+	}
+	
+	TRACE("check3");
 
     TRACE(
 	"Copying %u bytes of output data from device memory 0x%lx into vector 0x%lx ...\n",
@@ -370,7 +351,7 @@ void streaming_min_max_cuda_plain_tiled_calc(
 	streaming_min_max_cuda_plain_clean_up();
 	
         ERROR_EXIT(
-	    "Failed to copy %u bytes of input vector from device memory - %s",
+	    "Failed to copy %u bytes to input vector from device memory - %s",
 	    min_max_size,
 	    cudaGetErrorString(err)
 	    );
