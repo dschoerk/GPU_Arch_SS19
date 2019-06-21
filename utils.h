@@ -22,8 +22,8 @@ extern "C" void error_at_line(
     );
 #endif
 
-const int colors[] = { 0xff00ff00, 0xff0000ff, 0xffffff00, 0xffff00ff, 0xff00ffff, 0xffff0000, 0xffffffff };
-const int num_colors = sizeof(colors)/sizeof(int);
+const unsigned int colors[] = { 0xff00ff00, 0xff0000ff, 0xffffff00, 0xffff00ff, 0xff00ffff, 0xffff0000, 0xffffffff };
+const size_t num_colors = sizeof(colors)/sizeof(int);
 
 #define USE_NVTX
 #ifdef USE_NVTX
