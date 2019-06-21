@@ -1,4 +1,3 @@
-
 #include "utils.h"
 #include "streaming_min_max_cuda_plain_tiled_cuda.cuh"
 
@@ -275,7 +274,6 @@ PUSH_RANGE("h2d", 1)
 	
     unsigned int const min_max_size = min_max_elements * sizeof(float);
     unsigned int const array_size = array_elements * sizeof(float);
-    unsigned int const total_mem_size(array_size + 2 * min_max_size);
     cudaError_t err(cudaSuccess);    
     int dev_count(0);
     cudaDeviceProp dev_prop;
