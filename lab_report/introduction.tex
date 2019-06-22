@@ -1,8 +1,8 @@
 
 \section{Introduction and Problem Statement}
 
-In the course of this lab, parallel versions of a sliding window minimum/maximum filter with configurable window size inspired by a sequential algorithm developed by Daniel Lemire~\cite{lemire2006streaming} and its reference implementation\footnote{\url{https://github.com/lemire/runningmaxmin}} had to be implemented.
+In the scope of this lab, parallel versions of a sliding window minimum/maximum filter with configurable window size inspired by a sequential algorithm developed by Lemire~\cite{lemire2006streaming} and its reference implementation\footnote{\url{https://github.com/lemire/runningmaxmin}} had to be implemented. The implementation had to be done using NVIDIA's parallel computing platform and programming model for general computing on graphical processing units (GPUs) named CUDA\footnote{\url{https://docs.nvidia.com/cuda/}}.
 
-The implementation was done using NVIDIA's parallel computing platform and programming model for general computing on graphical processing units (GPUs) named CUDA\footnote{\url{https://docs.nvidia.com/cuda/}}. Hereby different versions of the algorithm (with different degrees of optimization and parallelism) have been implemented using plain CUDA on the one hand and Thrust\footnote{\url{https://docs.nvidia.com/cuda/thrust/index.html}} (NVIDIA's C++ template library for CUDA) on the other hand.
+Hereby different versions of the algorithm (with different degrees of optimization and parallelism) have been implemented using plain CUDA on the one hand and Thrust\footnote{\url{https://docs.nvidia.com/cuda/thrust/index.html}} (NVIDIA's C++ template library for CUDA) on the other hand.
  
 The source code for this project together with profiling screenshots and measurement data is publicly available at \url{https://github.com/dschoerk/GPU_Arch_SS19/}.

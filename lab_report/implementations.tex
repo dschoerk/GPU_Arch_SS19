@@ -3,9 +3,9 @@ In a first step towards our implementation we implemented a framework to test an
 
 First we created a common abstraction for the different algorithm implementations in form of the \texttt{streaming\_min\_max\_algorithm\_interface} interface. The interface declares a \texttt{calc} function which executes the particular algorithm. Additionally, the interface provides common functions to retrieve the computed minimum and maximum values for the sake of comparison against Lemire's reference implementation.
 
-For each individual flavor of the algorithms (including Lemire's reference implementation) the interface was instantiated by the respective implementation and stored in an array (\texttt{algorithms\_array}). The testing framework iterates over all algorithm instances in the array for a configurable number of iterations and computes the results for all of them. Hereby the average timing for one iteration is computed by measuring the total execution time (wall clock time of the host CPU using its high resolution clock) for all iterations and dividing this by the number of iterations. This is done as a counter measure against one-time effects during execution like cold caches etc. To properly visualize individual execution segments for a setup phase (covering the allocation of memory on the GPU device and the transfer or input data from the host CPU's memory to the memory of the GPU device), the actual processing phase (i.e., the execution of the computing kernel on the GPU device), and a tear-down phase (covering the transfer of the output data from the memory of the GPU device back to the host CPU's memory) in the NVIDIA Visual Profiler (NVVP), NVIDIA Tools Extension SDK (NVTX) Ranges are used as indicators.
+For each individual flavor of the algorithms (including Lemire's reference implementation) the interface was instantiated by the respective implementation and stored in an array (\texttt{algorithms\_array}). The testing framework iterates over all algorithm instances in the array for a configurable number of iterations and computes the results for all of them. Hereby the average timing for one iteration of each algorithm flavor is computed by measuring the total execution time (wall clock time of the host CPU using its high resolution clock) for all iterations and dividing this by the number of iterations. This is done as a counter measure against one-time effects during execution like cold caches etc. To properly visualize individual execution segments for a setup phase (covering the allocation of memory on the GPU device and the transfer or input data from the host CPU's memory to the memory of the GPU device), the actual processing phase (i.e., the execution of the computing kernel on the GPU device), and a tear-down phase (covering the transfer of the output data from the memory of the GPU device back to the host CPU's memory) in the NVIDIA Visual Profiler (NVVP), NVIDIA Tools Extension SDK (NVTX) Ranges are used as indicators.
 
-As input data the framework generates uniformly distributed random samples of configurable size of floating point values in the range [-0.5,0.5]. This input data is applied to every flavor of the algorithm including Lemire's reference implementation. The output of the latter is used for a reference check to ensure the correctness of our implementations. 
+As input data the framework generates uniformly distributed random samples of configurable size of floating point values in the range [-0.5,0.5]. This input data is applied to every flavor of the algorithm including Lemire's reference implementation. The output of the latter is used for a reference check to ensure the correctness of our own implementations. 
 
 To conveniently test the algorithms, the application provides a command line interface. The sample size, window width, iterations and a verbose mode can be set with the following options:
 
@@ -31,7 +31,7 @@ Figure~\ref{fig:exampleoutput} illustrates an example output for a run with a sa
 
 \section{Optimization}
 
-Four typical steps are taken when executing an algorithm on a GPU as illustrated in Figure~\ref{fig:steps}. As a first step memory on the GPU needs to be allocated for the input and the output data of the algorithm. In a second steps the input data is transferred from the host CPU's memory into the allocated GPU memory. In the third step, the computing kernel is executed on the GPU device using the input data in device memory and writing output data to device memory. Finally, the output data is transferred back to host memory.
+When executing an algorithm on a GPU the following four typical steps are taken as illustrated in Figure~\ref{fig:steps}. As a first step memory on the GPU needs to be allocated for the input and the output data of the algorithm. In a second steps the input data is transferred from the host CPU's memory into the allocated GPU memory. In the third step, the computing kernel is executed on the GPU device using the input data in device memory and writing output data to device memory. Finally, the output data is transferred back to host memory.
 
 \begin{figure} [h]
     \centering
@@ -47,35 +47,36 @@ To maximize performance for our algorithms we pursue two orthogonal optimization
 \label{ch:memory optimization}
 
 With respect to memory allocation and data transfer, a first straight-forward implementation might consider allocating memory on the GPU device using \texttt{cudaMalloc()}, transferring the input data from the host CPU to the GPU device's memory by means of \texttt{cudaMemcpy()}, executing the computation kernel on the GPU, transferring the input data from the GPU device's memory back to the host CPU by means of \texttt{cudaMemcpy()}, and finally de-allocating the memory on the GPU device by means of \texttt{cudaFree()}.
-When doing this it is important to allocate and de-allocate the GPU memory en-block (allocate a large chunk of memory and divide it afterwards in smaller allocation units) in order to reduce the number of \texttt{cudaMalloc()} and \texttt{cudaFree()} calls to the bare minimum in order to reduce the overhead that comes along with them. Similar the amount of individual \texttt{cudaMemcpy()} should be reduced to if possible. Figure~\ref{fig:memory_malloc} depicts the overhead of \texttt{cudaMalloc()} and \texttt{cudaFree()} (highlighted in yellow) as profiled on an NVIDIA Tesla K10.G2 GPU with 8 GiB of RAM for a profile run with sample size of 10000000, a sliding window size of 500, and 3 iterations. Note that obviously the CUDA driver already performs some optimization here, since the overhead for \texttt{cudaMalloc()} is only visible in the first invocation, but not in any subsequent ones.
 
-\begin{figure}
+When doing this it is important to allocate and de-allocate the GPU memory en-block (allocate a large chunk of memory and divide it afterwards in smaller allocation units) in order to limit the number of \texttt{cudaMalloc()} and \texttt{cudaFree()} calls to the bare minimum to reduce the overhead that comes along with them. Similar the amount of individual \texttt{cudaMemcpy()} calls should be reduced as well if possible.
+
+Figure~\ref{fig:memory_malloc} depicts the overhead of \texttt{cudaMalloc()} and \texttt{cudaFree()} (highlighted in yellow) as profiled on an NVIDIA Tesla K10.G2 GPU for an execution with sample size of $10^7$, a sliding window size of 500, and 3 iterations. Note that obviously the CUDA driver already performs some optimization here, since the overhead for \texttt{cudaMalloc()} is only visible in the first invocation, but not in any subsequent ones. In addition to the overhead caused by \texttt{cudaMalloc()} and \texttt{cudaFree()}, in this setup the CUDA driver has to transfer the data from pageable host memory to internally page-locked (i.e., non pageable) memory which can then serve as a source (or as the destination) of a DMA transfer between the host CPU and the GPU device causing an additional copy operation of the data in each direction.
+
+\begin{figure}[h]
     \centering
     \includegraphics[width=0.8\linewidth]{Figures/memory_malloc}
-    \caption{profiling an execution with \texttt{cudaMalloc()} and \texttt{cudaFree()} \label{fig:memory_malloc}}
+    \caption{Profiling an execution with \texttt{cudaMalloc()} and \texttt{cudaFree()} \label{fig:memory_malloc}}
 \end{figure}
 
-In addition to the overhead caused by \texttt{cudaMalloc()} and \texttt{cudaFree()}, in this setup the CUDA driver has to transfer the data from pageable host memory to internally pinned (non pageable) memory which can then serve as a source (or as the destination) of a DMA transfer between the host CPU and the GPU device causing an additional copy operation of the data in each direction.
+Thus as a further improvement the logical consequence is to directly make use of \emph{page-locked host memory}. The page-locked host memory is then registered for access from the GPU device by means of \texttt{cudaHostRegister()} and \texttt{cudaHostDeregister()}. This allows the GPU to directly access the host CPU's memory and as such completely avoids the overhead of \texttt{cudaMalloc()} and \texttt{cudaFree()}. By that we remove the need for an additional copy operation in each direction.
 
-Thus as a further improvement the logical consequence is to make use of page-locked host memory which is registered for access from the GPU device by means of \texttt{cudaHostRegister()} and \texttt{cudaHostDeregister()}. This allows the GPU to directly access the host CPU's memory and as such completely avoid the overhead of \texttt{cudaMalloc()} and \texttt{cudaFree()}. By that we remove the requirement of an additional copy operation in each direction. However, since the access to the page-locked host memory then takes place in the course of the execution of the computing kernel on the GPU device, the memory access patterns heavily depend on actual structure/algorithm of the computing kernel. Hereby non-contiguous access patterns may prevent combining multiple accesses into a single bulk transfer causing a potentially severe performance penalty. Note that this is also influenced by the CUDA driver's and the GPU's capability to coalesce multiple memory accesses into a single memory transfer. 
+However, since the access to the page-locked host memory then takes place in the course of the execution of the computing kernel on the GPU device, the memory access patterns heavily depend on actual structure/algorithm of the computing kernel. Hereby non-contiguous access patterns may prevent combining multiple accesses into a single bulk transfer causing a potentially severe performance penalty. Note that this is also influenced by the CUDA driver's and the GPU's capability to coalesce multiple memory accesses into a single memory transfer. 
 
-Additionally direct access to host memory has a drawback in case a single memory location is accessed multiple times. Although this drawback can be reduced by means of caches, which however usually exhibit a least-recently used (LRU) replacement strategy, which may be far from optimal for the respective memory access pattern.
+Additionally direct access to host memory has a drawback in case a single memory location is accessed multiple times. Although this drawback can be reduced by means of caches, these usually exhibit a least-recently used (LRU) replacement strategy, which may be far from optimal for the respective memory access pattern of the computing kernel.
 
-Figure~\ref{fig:memory_page_locked} illustrates the a profiling run on the same NVIDIA Tesla K10.G2 GPU with 8 GiB of RAM where the use of \texttt{cudaMalloc()} and \texttt{cudaFree()} together with \texttt{cudaMalloc()} has been replaced by the use of page-locked host memory with \texttt{cudaHostRegister()} and \texttt{cudaHostDeregister()}. -- For this profiling run the same arguments, namely a sample size of 10000000, a sliding window size of 500, and 3 iterations have been used. Similar to the previous profiling run, the overhead caused (this time by \texttt{cudaHostRegister()} is highlighted in yellow.
-
-\begin{figure}
+\begin{figure}[h]
     \centering
     \includegraphics[width=0.8\linewidth]{Figures/memory_page_locked}
     \caption{Profiling an execution with page-locked host memory \label{fig:memory_page_locked}}
 \end{figure}
 
-Looking at the execution times as well as on the profiling chart it becomes obvious that at least on this NVIDIA Tesla K10.G2 GPU, this ``optimization'' in fact is a severe deterioration.
+Figure~\ref{fig:memory_page_locked} illustrates the a profiling run on the same NVIDIA Tesla K10.G2 GPU where the use of \texttt{cudaMalloc()} and \texttt{cudaFree()} together with \texttt{cudaMemcpy()} has been replaced by the use of page-locked host memory with \texttt{cudaHostRegister()} and \texttt{cudaHostDeregister()}. -- For this profiling run the same arguments, namely a sample size of $10^7$, a sliding window size of 500, and 3 iterations have been used. Similar to the previous profiling run, the overhead caused (this time by \texttt{cudaHostRegister()}) is highlighted in yellow. Looking at the execution times as well as on the profiling chart it becomes obvious that at least on this NVIDIA Tesla K10.G2 GPU, this ``optimization'' in fact is a severe deterioration w.r.t.\ performance.
 
-To overcome the performance penalty when directly accessing page-locked host memory (even with caching in place), the use of \emph{shared memory}, which is as performant as the GPU's streaming multiprocessor's L1 cache and shared amongst the different threads of a block as a kind of program-controlled cache is possible. Hereby the transfer between the page-locked host memory and the GPU's shared memory is performed under the control of the computing kernel and may thus be aligned to the concrete memory access pattern of the computing kernel.
+To overcome the performance penalty when directly accessing page-locked host memory (even with caching in place), the use of \emph{shared memory}, which is as performant as the GPU's streaming multiprocessor's L1 cache and shared amongst the different threads of a thread block as a kind of \emph{program-controlled cache} is possible. Hereby the transfer between the page-locked host memory and the GPU's shared memory is performed under the control of the computing kernel and may thus be aligned with the concrete memory access pattern of the computing kernel.
 
 Figure~\ref{fig:memory_shared} illustrates a profiling run on the same hardware as the previous two where the use of page-locked host memory with \texttt{cudaHostRegister()} and \texttt{cudaHostDeregister()} has been complemented with the use of shared memory as program-controlled cache.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \includegraphics[width=0.8\linewidth]{Figures/memory_shared}
     \caption{Profiling an execution with page-locked host memory using shared memory as program-controlled cache\label{fig:memory_shared}}
@@ -83,7 +84,7 @@ Figure~\ref{fig:memory_shared} illustrates a profiling run on the same hardware 
 
 \subsection{Parallelization Strategies}
 \label{ch:parallelization}
-We are pursuing two different parallelization strategies to find the minimum and maximum values in a window. In our first strategy we compute each sliding window by one thread. The thread iterates over all values in the current window and computes the result step by step. This approach is used by the \texttt{cuda plain \- cuda malloc}, \texttt{cuda plain \- page locked memory}, \texttt{cuda plain \- page locked shared memory} and \texttt{thrust\_naive} implementations and is illustrated in Algorithm~\ref{alg:linearscan}.
+We are pursuing two different parallelization strategies to find the minimum and maximum values within a window. In our first strategy we compute each sliding window by one thread. The thread iterates over all values in the current window and computes the result step by step. This approach is used by the CUDA Malloc, CUDA Page-Locked, CUDA Page-Locked Shared, and Thrust Naive implementations and is illustrated in Algorithm~\ref{alg:linearscan}.
 
 \begin{algorithm}[h]
     \KwData{w = window size, s = data size}
@@ -94,8 +95,8 @@ We are pursuing two different parallelization strategies to find the minimum and
             minimum = min(minimum, input[k + i]) \\
             maximum = max(maximum, input[k + i]) \\
         } 
-        $min_{out}$[k] = minimum \\
-        $max_{out}$[k] = maximum
+        $\mathrm{minima}_{\mathrm{out}}$[k] = minimum \\
+        $\mathrm{maxima}_{\mathrm{out}}$[k] = maximum
     }
     \caption{Linear scan}
     \label{alg:linearscan}
@@ -105,12 +106,12 @@ However, we found that the reduction step of our min/max algorithm shares some p
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\linewidth]{Figures/prefix}
-    \caption{Naive computation of prefix sum \cite{GG3}}
+    \includegraphics[width=0.6\linewidth]{Figures/prefix}
+    \caption{Naive computation of prefix sum~\cite{Nguyen:2007:GG:1407436}}
     \label{fig:prefixsum}
 \end{figure}
 
-We recognize that in such a binary reduction scheme the number of summed values doubles in each step i.e. the number of summed values per node in a level $d$ is $2^d$. Following this observation we can replace the plus operator with the min/max functions and therefore compute the min/max values for all windows of size $2^d$. To now compute windows of arbitrary length $w$ we can combine the min/max results of the next smaller power of 2 sized window length, and fall back to our linear scheme first presented to perform the combination. This approach is taken in the \texttt{thrust} and \texttt{cuda plain - cuda tiled} implementations. A better depiction of this scheme is shown in Figure~\ref{fig:prefixsum2}.
+We recognize that in such a binary reduction scheme the number of summed values doubles in each step, i.e., the number of summed values per node in a level $d$ is $2^d$. Following this observation we can replace the plus operator with the min/max functions and therefore compute the min/max values for all windows of size $2^d$. To now compute windows of arbitrary length $w$ we can combine the min/max results of the next smaller power of 2 sized window length, and fall back to our linear scheme presented previously to perform the combination. This approach is taken in the Thrust and CUDA Tiled implementations. A better depiction of this scheme is shown in Figure~\ref{fig:prefixsum2}.
 
 \begin{figure}[h]
     \centering
@@ -121,10 +122,10 @@ We recognize that in such a binary reduction scheme the number of summed values 
 
 Here we can intuitively see that not all threads can contribute a final output value, instead in each level the number of threads contributing to the output directly is reduced by $2^d-1$. The output size that can be computed by a block of length $n$ is $n - w + 1$. Therefore the blocks in the computation grid must be overlapped by $w - 1$ units. This remains true for arbitrary window lengths. The computation and indexing scheme is shown in Algorithm~\ref{alg:loglinearscan}. For the sake of simplicity we have left out tiling over multiple blocks in this pseudo code.
 
-\begin{algorithm}[H]
+\begin{algorithm}[h]
     \KwData{w = window size, s = data size}
     \For{each thread k in parallel}{
-        \For{d = 0; d < $\lfloor log_2(d) \rfloor$; d++}{
+        \For{d = 0; d < $\lfloor log_2(w) \rfloor$; d++}{
             \If{$k + 2^d < s$}{
                 minima[k] = min(minima[k], minima[k + $2^d$] \\
                 maxima[k] = min(maxima[k], maxima[k + $2^d$] \\
@@ -134,12 +135,12 @@ Here we can intuitively see that not all threads can contribute a final output v
         \If{k < s - w + 1} {
             minimum = minima[k] \\
             maximum = maxima[k] \\
-            \For{i=0; i < w - $\lfloor log_2(d) \rfloor$; i++}{
+            \For{i=0; i < w - $\lfloor log_2(w) \rfloor$; i++}{
                 minimum = min(minimum, input[k + i + 1]) \\
                 maximum = max(maximum, input[k + i + 1]) \\
             } 
-            $minima_{out}$[k] = minimum \\
-            $maxima_{out}$[k] = maximum
+            $\mathrm{minima}_{\mathrm{out}}$[k] = minimum \\
+            $\mathrm{maxima}_{\mathrm{out}}$[k] = maximum
         }
     }
     \caption{Log linear scan}
@@ -154,38 +155,36 @@ In this section we briefly explain the differences and implementation details fo
 In this implementation making use of thrust, we have first attempted to utilize the provided reduction schemes in Thrust as much as possible. A parallel reduction is provided by the Thrust library with \texttt{thrust::minmax\_element}. While this function computes the min/max elements over a given range, it requires us to rerun the function for each shifted window and thus result in a prohibitive amount of kernel calls\footnote{\url{https://github.com/dschoerk/GPU_Arch_SS19/blob/master/streaming\_min\_max\_thrust\_naive\_cuda.cu\#L97-L107}}.  We have therefore shifted strategies and (ab)use \texttt{thrust::foreach} on a counting iterator spanning $s - w + 1$ elements and implement Algorithm~\ref{alg:linearscan} in a functor to run by the foreach thrust call. 
 
 \subsection{Thrust}
-In the second thrust based implementation we follow the same strategy which is based on \texttt{thrust::foreach} and a counting iterator for parallelization. However, in this version we implement the (in theory) more efficient computation scheme of Algorithm~\ref{alg:loglinearscan}. To achieve grid wide synchronization for each $2^d$ span, we need to run them as separate kernels. An attempt to synchronize via cooperative groups\footnote{\url{https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html\#cooperative-groups}} failed for various reasons and is explained below. The fallback to running separate kernels introduces again a big overhead for computation time. While the code for both thrust implementations is very readable, their performance is not on par with the plain CUDA implementations.
+In the second thrust based implementation we follow the same strategy which is based on \texttt{thrust::foreach} and a counting iterator for parallelization. However, in this version we implement the (in theory) more efficient computation scheme of Algorithm~\ref{alg:loglinearscan}. To achieve grid wide synchronization for each $2^d$ span, we need to run them as separate kernels. An attempt to synchronize via cooperative groups\footnote{\url{https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html\#cooperative-groups}} failed for various reasons and is explained below. The fallback to running separate kernels introduces again a big overhead w.r.t.\ computation time. While the code for both thrust implementations is very readable, their performance is not on par with the plain CUDA implementations.
 
 \subsubsection{Synchronization with Cooperative Groups}
-In an experiment we tried to utilize the cooperative group feature to achieve grid wide synchronization. Using cooperative groups failed for various reasons. First research showed that a GPU with at least compute capability 3.5 is required to make use of cooperative groups. At least the RTX 2070 would suffice that. However, further research revealed further constraints. Either a Linux system without MPS\footnote{\url{https://docs.nvidia.com/deploy/mps/index.html}}, or a Windows system with the GPU in TCC (instead of WDDM) mode\footnote{\url{https://docs.nvidia.com/gameworks/content/developertools/desktop/nsight/tesla_compute_cluster.htm}} must be used. Since the RTX 2070 is the only video card in the used desktop system it was not possible to run it in TCC (headless) mode. Furthermore it is required to launch the kernels with \texttt{cudaLaunchCooperativeKernel} which might not be the case for thrust. Nevertheless it was an interesting experiment and may be useful for other implementations in the future. Especially as a replacement to global block synchronization hacks as described in the lectures. 
+In an experiment we tried to utilize the cooperative group feature to achieve grid wide synchronization. Using cooperative groups failed for various reasons. First research showed that a GPU with at least compute capability 3.5 is required to make use of cooperative groups. At least the RTX 2070 would suffice that. However, further research revealed additional constraints. Either a Linux system without MPS\footnote{\url{https://docs.nvidia.com/deploy/mps/index.html}}, or a Windows system with the GPU in TCC (instead of WDDM) mode\footnote{\url{https://docs.nvidia.com/gameworks/content/developertools/desktop/nsight/tesla_compute_cluster.htm}} must be used. Since the RTX 2070 is the only video card in the used desktop system it was not possible to run it in TCC (headless) mode. Furthermore it is required to launch the kernels with \texttt{cudaLaunchCooperativeKernel} which might not be the case for Thrust. Nevertheless it was an interesting experiment and may be useful for other implementations in the future. Especially as a replacement to global block synchronization hacks as described in the lectures. 
 
 \subsection{CUDA Malloc}
 \label{sec:cuda_malloc}
 This implementation is a plain CUDA implementation (not using Thrust or CUDA streams) which only makes use of \texttt{cudaMalloc()} and \texttt{cudaFree()} and explicit data transfer between the host CPU and the GPU device via \texttt{cudaMemcpy()} (i.e., it does not use page-locked and/or shared memory).
 
-From a parallelization strategy perspective, this implementation makes use of the first presented strategy, namely one thread per min/max output and thus is the plain CUDA counter part to the naive Thrust implementation presented in Section~\ref{sec:thrust_naive}.
+From a parallelization strategy perspective, this implementation pursues the first presented strategy, namely one thread per min/max output and thus renders this implementation the plain CUDA counter part to the Thrust Naive implementation presented in Section~\ref{sec:thrust_naive}.
 
 \subsection{CUDA Page-Locked}
 \label{sec:cuda_page_locked}
-In contrast to the CUDA malloc-based implementation described in Section~\ref{sec:cuda_malloc}, this implementation makes use of page-locked host memory (albeit without using shared device memory as a cache). Thus the memory containing the input and output vectors of the algorithms are registered for GPU device access (and thereby page-locked) with \texttt{cudaHostRegister()} (and de-registered via \texttt{cudaHostDeregister()} after use).
+In contrast to the CUDA Malloc implementation described in Section~\ref{sec:cuda_malloc}, this implementation makes use of page-locked host memory (albeit without using shared device memory as a cache). Thus the memory containing the input and output vectors of the algorithms are registered for GPU device access (and thereby page-locked) with \texttt{cudaHostRegister()} (and de-registered via \texttt{cudaHostDeregister()} after use).
 
-From the parallelization strategy perspective, this implementation is identical to the CUDA malloc-based implementation described in Section~\ref{sec:cuda_malloc}.
+From the parallelization strategy perspective, this implementation is identical to the CUDA Malloc implementation described in Section~\ref{sec:cuda_malloc}.
 
 \subsection{CUDA Page-Locked Shared}
-In addition to the CUDA page-locked implementation described in Section~\ref{sec:cuda_page_locked}, this implementation uses of the GPU's shared memory as a program-controller cache. Hereby for every thread block a chunk of shared memory is statically allocated. The execution of the computing kernel is divided into two phases. In the first phase the shared memory of every thread block is filled element-wise (one element per thread) in parallel with the input data which is afterwards worked on by this thread block. In the second phase the actual processing of the input data (i.e., the computation of the sliding window minimum/maximum algorithm) takes place and purely acts on the data cached in the shared memory.
+In addition to the CUDA Page-Locked implementation described in Section~\ref{sec:cuda_page_locked}, this implementation uses of the GPU's shared memory as a program-controlled cache. Hereby for every thread block a chunk of shared memory is statically allocated. The execution of the computing kernel is divided into two phases. In the first phase the shared memory of every thread block is filled element-wise (one element per thread) in parallel with the input data which is afterwards worked on by this thread block. In the second phase the actual processing of the input data (i.e., the computation of the sliding window minimum/maximum algorithm) takes place and purely acts on the data cached in the shared memory.
 
-From the parallelization strategy perspective, this implementation is as well identical to the CUDA malloc-based implementation described in Section~\ref{sec:cuda_malloc}.
+From the parallelization strategy perspective, this implementation is as well identical to the CUDA Malloc implementation described in Section~\ref{sec:cuda_malloc}.
 
 \subsection{CUDA Tiled}
-In this implementation we have combined the effects of the superior page-locked memory and the advanced computation scheme in Algorithm~\ref{alg:loglinearscan}. To enable sample vectors of arbitrary length and avoid the cost of grid wide synchronization, we implement a tiling scheme. The tiling scheme operates on a per block level such that synchronization is only required within a block and can be achieved with \texttt{\_\_syncthreads}. The tiling scheme is further described by Figure~\ref{fig:tiled}. The number of output values is bounded by the block size $b$ as described in Chapter~\ref{ch:parallelization} to $b - w + 1$. We therefore overlap blocks accordingly to receive $s - w + 1$ output values in total. This requires re-computation of some values already present in a previous block, but is overall more efficient than a costly grid wide synchronization step.
+In this implementation we have combined the effects of the superior page-locked memory with shared GPU memory as a program-controlled cache and the advanced computation scheme in Algorithm~\ref{alg:loglinearscan}. To enable sample vectors of arbitrary length and avoid the cost of grid wide synchronization, we implement a tiling scheme.
 
-\begin{figure}
+The tiling scheme operates on a per block level such that synchronization is only required within a block and can be achieved with \texttt{\_\_syncthreads}. The tiling scheme is further illustrated in Figure~\ref{fig:tiled}. The number of output values is bounded by the block size $b$ as described in Chapter~\ref{ch:parallelization} to $b - w + 1$. We therefore overlap blocks accordingly to receive $s - w + 1$ output values in total. This requires re-computation of some values already present in a previous block, but is overall more efficient than a costly grid wide synchronization step.
+
+\begin{figure} [h]
     \centering
     \includegraphics[width=0.8\linewidth]{Figures/tiling}
     \caption{Tiling schema to avoid grid wide synchronization. Some computed values in the overlapping regions are lost and need to be re-computed by the next block.}
     \label{fig:tiled}
 \end{figure}
-
-
-
-
